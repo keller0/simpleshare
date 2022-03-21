@@ -7,14 +7,17 @@
     <title>Go-share</title>
 </head>
 <body>
-    <textarea name="" id="" cols="100" rows="10">{{ .data }}</textarea>
-    <form action="/" method="POST">
-        <textarea name="sdata" id="sdata" cols="100" rows="10"></textarea>
+
+    <div style="text-align: center">
+        <textarea name="" id="" cols="100" rows="10">{{ .data }}</textarea>
+        <form action="/" method="POST">
+            <textarea name="sdata" id="sdata" cols="100" rows="10"></textarea>
+            <br>
+            <input type="submit" value="Submit">
+        </form>
         <br>
-        <input type="submit" value="Submit">
-    </form>
-    <br>
-    <button onclick="location.href = '/';">Refresh</button>
+        <button onclick="location.href = '/';">Refresh</button>
+    </div>
 
 </body>
 </html>
