@@ -13,11 +13,80 @@
         <form action="/" method="POST">
             <textarea name="sdata" id="sdata" cols="100" rows="10"></textarea>
             <br>
-            <input type="submit" value="Submit">
+            <div style="padding: 28px;">
+                <input type="submit" value="Submit" style="background: azure;">
+<!--                <button onclick="location.href = '/';" style="margin-left: 30px;background: gray;">Refresh</button>-->
+            </div>
         </form>
         <br>
-        <button onclick="location.href = '/';">Refresh</button>
+        <div id="drop_zone" ondrop="dropHandler(event);" ondragover="dragOverHandler(event);">
+            <p>Drag one or more files to this Drop Zone ...</p>
+        </div>
+        <div id="imgList">
+            {{ range .imaList }}
+            <img style="width: 80%" src="{{ . }}" alt="">
+            {{ end }}
+        </div>
+
     </div>
 
 </body>
 </html>
+<style>
+    #drop_zone {
+        border: 5px solid #0c3e3e;
+        width: 50%;
+        height: 150px;
+        margin: 10px auto 20px;
+    }
+</style>
+<script>
+
+    function dropHandler(ev){
+        console.log('File(s) dropped');
+
+        // Prevent default behavior (Prevent file from being opened)
+        ev.preventDefault();
+
+        if (ev.dataTransfer.items) {
+            // Use DataTransferItemList interface to access the file(s)
+            for (var i = 0; i < ev.dataTransfer.items.length; i++) {
+                // If dropped items aren't files, reject them
+                if (ev.dataTransfer.items[i].kind === 'file') {
+                    var file = ev.dataTransfer.items[i].getAsFile();
+                    console.log('... file[' + i + '].name = ' + file.name);
+                }
+
+                let formData = new FormData();
+                formData.append("file", file);
+                fetch('/upload', {method: "POST", body: formData})
+                    .then((response) => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! Status: ${ response.status }`);
+                        }
+                        return response.text();
+                    }).then((response) => {
+                        console.log(response)
+                        let elem = document.createElement("img");
+                        elem.src = response;
+                        elem.style.width = "80%";
+                        let list = document.getElementById("imgList");
+                        list.insertBefore(elem, list.firstChild);
+                });
+
+            }
+        } else {
+            // Use DataTransfer interface to access the file(s)
+            for (var i = 0; i < ev.dataTransfer.files.length; i++) {
+                console.log('... file[' + i + '].name = ' + ev.dataTransfer.files[i].name);
+            }
+        }
+    }
+
+    function dragOverHandler(ev) {
+        console.log('File(s) in drop zone');
+
+        // Prevent default behavior (Prevent file from being opened)
+        ev.preventDefault();
+    }
+</script>
