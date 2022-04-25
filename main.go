@@ -33,7 +33,7 @@ func main() {
 	})
 
 	r.POST("/", func(c *gin.Context) {
-		sData = c.PostForm("sdata")
+		sData = c.PostForm("sData")
 		c.HTML(http.StatusOK, "index.html", gin.H{"data": sData, "imaList": imgList})
 	})
 
