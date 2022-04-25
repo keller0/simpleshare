@@ -9,24 +9,28 @@
 </head>
 <body>
 
-    <div style="text-align: center">
+    <div style="text-align: center;max-width: 920px; margin: auto">
+        <div><p>Share texts or files in your local network</p></div>
         <textarea name="" id="" cols="100" rows="10">{{ .data }}</textarea>
         <form action="/" method="POST" id="dForm">
             <textarea name="sData" id="sData" cols="100" rows="10" ondrop="dropHandler(event);" ondragover="dragOverHandler(event);"></textarea>
             <br>
         </form>
-        <form action="/clearImg" method="POST" id="cForm" style="display: none">
-
-        </form>
+        <form action="/clearFile" method="POST" id="cForm" style="display: none"></form>
         <div style="padding: 28px;">
             <input type="submit" value="Submit" form="dForm"  style="background: azure;">
             <button onclick="location.href = '/';" style="margin-left: 30px;background: gray;">Refresh</button>
-            <button type="submit" form="cForm"  style="margin-left: 30px;background: #d25a5a;">DeleteImages</button>
+            <button type="submit" form="cForm"  style="margin-left: 30px;background: #d25a5a;">DeleteFiles</button>
+        </div>
+        <div style="padding: 3px;" id="fileList">
+            {{ range .fileList }}
+            <a style="" href="{{.N}}">{{.Ns}}</a>
+            {{ end }}
         </div>
         <br>
         <div id="imgList">
             {{ range .imaList }}
-            <img style="width: 80%" src="{{ . }}" alt="">
+            <img style="width: 300px; padding: 5px" src="{{ . }}" alt="">
             {{ end }}
         </div>
     </div>
@@ -34,7 +38,11 @@
 </body>
 </html>
 <style>
-
+    textarea {
+        /* will prevent resizing horizontally */
+        max-width: 95%;
+        resize:vertical;
+    }
 </style>
 <script>
 
@@ -51,9 +59,12 @@
                 if (ev.dataTransfer.items[i].kind === 'file') {
                     let file = ev.dataTransfer.items[i].getAsFile();
                     console.log('... file[' + i + '].name = ' + file.name);
+                    console.log(file)
 
                     let formData = new FormData();
                     formData.append("file", file);
+                    formData.append("isImg", isFileImage(file)?"1":"0");
+
                     fetch('/upload', {method: "POST", body: formData})
                         .then((response) => {
                             if (!response.ok) {
@@ -62,11 +73,21 @@
                             return response.text();
                         }).then((response) => {
                         console.log(response)
-                        let elem = document.createElement("img");
-                        elem.src = response;
-                        elem.style.width = "80%";
-                        let list = document.getElementById("imgList");
-                        list.insertBefore(elem, list.firstChild);
+                        if (isFileImage(file))
+                        {
+                            let elem = document.createElement("img");
+                            elem.src = response;
+                            elem.style.width = "300px";
+                            elem.style.padding = "5px";
+                            let list = document.getElementById("imgList");
+                            list.insertBefore(elem, list.firstChild);
+                        } else {
+                            let elem = document.createElement("a");
+                            elem.href = response;
+                            elem.text = file.name;
+                            let list = document.getElementById("fileList");
+                            list.append(elem, list.firstChild);
+                        }
                     });
                 }
             }
@@ -76,6 +97,10 @@
                 console.log('... file[' + i + '].name = ' + ev.dataTransfer.files[i].name);
             }
         }
+    }
+
+    function isFileImage(file) {
+        return file && file['type'].split('/')[0] === 'image';
     }
 
     function dragOverHandler(ev) {

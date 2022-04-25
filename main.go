@@ -20,6 +20,13 @@ func init() {
 		panic(err)
 	}
 }
+
+type tmpFile struct {
+	T  string `json:"t"`
+	N  string `json:"n"`
+	Ns string `json:"ns"`
+}
+
 func main() {
 	r := gin.Default()
 	r.SetTrustedProxies(nil)
@@ -27,19 +34,21 @@ func main() {
 	r.LoadHTMLGlob("index.html")
 	sData := "paste it below"
 	var imgList []string
+	var fileList []tmpFile
 
 	r.GET("/", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "index.html", gin.H{"data": sData, "imaList": imgList})
+		c.HTML(http.StatusOK, "index.html", gin.H{"data": sData, "imaList": imgList, "fileList": fileList})
 	})
 
 	r.POST("/", func(c *gin.Context) {
 		sData = c.PostForm("sData")
-		c.HTML(http.StatusOK, "index.html", gin.H{"data": sData, "imaList": imgList})
+		c.HTML(http.StatusOK, "index.html", gin.H{"data": sData, "imaList": imgList, "fileList": fileList})
 	})
 
-	r.POST("/clearImg", func(c *gin.Context) {
+	r.POST("/clearFile", func(c *gin.Context) {
+		fileList = nil
 		imgList = nil
-		c.HTML(http.StatusOK, "index.html", gin.H{"data": sData, "imaList": imgList})
+		c.HTML(http.StatusOK, "index.html", gin.H{"data": sData, "imaList": imgList, "fileList": fileList})
 	})
 
 	// Set memory limit for multipart forms (default is 32 MiB)
@@ -61,8 +70,16 @@ func main() {
 			c.String(http.StatusBadRequest, err.Error())
 		}
 		fileUrl := "tFile/" + saveName
-		imgList = append([]string{fileUrl}, imgList...)
-		//imgList = append(imgList, fileUrl)
+
+		v, e := c.GetPostForm("isImg")
+		if !e {
+			v = "0"
+		}
+		if v == "1" {
+			imgList = append([]string{fileUrl}, imgList...)
+		} else {
+			fileList = append(fileList, tmpFile{T: "0", N: fileUrl, Ns: file.Filename})
+		}
 
 		c.String(http.StatusOK, fileUrl)
 	})
