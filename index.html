@@ -10,24 +10,24 @@
 
     <div style="text-align: center">
         <textarea name="" id="" cols="100" rows="10">{{ .data }}</textarea>
-        <form action="/" method="POST">
-            <textarea name="sdata" id="sdata" cols="100" rows="10"></textarea>
+        <form action="/" method="POST" id="dForm">
+            <textarea name="sdata" id="sdata" cols="100" rows="10" ondrop="dropHandler(event);" ondragover="dragOverHandler(event);"></textarea>
             <br>
-            <div style="padding: 28px;">
-                <input type="submit" value="Submit" style="background: azure;">
-<!--                <button onclick="location.href = '/';" style="margin-left: 30px;background: gray;">Refresh</button>-->
-            </div>
         </form>
-        <br>
-        <div id="drop_zone" ondrop="dropHandler(event);" ondragover="dragOverHandler(event);">
-            <p>Drag one or more files to this Drop Zone ...</p>
+        <form action="/clearImg" method="POST" id="cForm" style="display: none">
+
+        </form>
+        <div style="padding: 28px;">
+            <input type="submit" value="Submit" form="dForm"  style="background: azure;">
+            <button onclick="location.href = '/';" style="margin-left: 30px;background: gray;">Refresh</button>
+            <button type="submit" form="cForm"  style="margin-left: 30px;background: #d25a5a;">DeleteImages</button>
         </div>
+        <br>
         <div id="imgList">
             {{ range .imaList }}
             <img style="width: 80%" src="{{ . }}" alt="">
             {{ end }}
         </div>
-
     </div>
 
 </body>

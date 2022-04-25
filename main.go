@@ -35,7 +35,11 @@ func main() {
 	r.POST("/", func(c *gin.Context) {
 		sData = c.PostForm("sdata")
 		c.HTML(http.StatusOK, "index.html", gin.H{"data": sData, "imaList": imgList})
+	})
 
+	r.POST("/clearImg", func(c *gin.Context) {
+		imgList = nil
+		c.HTML(http.StatusOK, "index.html", gin.H{"data": sData, "imaList": imgList})
 	})
 
 	// Set memory limit for multipart forms (default is 32 MiB)
@@ -58,9 +62,11 @@ func main() {
 		}
 		fileUrl := "tFile/" + saveName
 		imgList = append([]string{fileUrl}, imgList...)
+		//imgList = append(imgList, fileUrl)
 
 		c.String(http.StatusOK, fileUrl)
 	})
+
 	r.Static("/tFile", "./"+TmpFileDir)
 
 	fmt.Println("server start at http://127.0.0.1:7777")
