@@ -68,6 +68,7 @@ func main() {
 	})
 
 	r.Static("/tFile", "./"+TmpFileDir)
+	r.Static("/static", "./static")
 
 	fmt.Println("server start at http://127.0.0.1:7777")
 

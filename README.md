@@ -1,3 +1,3 @@
-# go-share
+# Go share
 
 share text in local network
