@@ -2,13 +2,14 @@ package main
 
 import (
 	"fmt"
-	"github.com/gin-gonic/gin"
 	"net/http"
 	"os"
 	"path"
 	"path/filepath"
 	"strconv"
 	"time"
+
+	"github.com/gin-gonic/gin"
 )
 
 const TmpFileDir = "tmpFile"
@@ -32,7 +33,7 @@ func main() {
 	r.SetTrustedProxies(nil)
 
 	r.LoadHTMLGlob("index.html")
-	sData := "paste it below"
+	sData := ""
 	var imgList []string
 	var fileList []tmpFile
 

@@ -7,13 +7,18 @@
     <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
     <title>Go share</title>
 </head>
-<body>
+<body ondrop="dropHandler(event);" ondragover="dragOverHandler(event);">
 
     <div style="text-align: center;max-width: 920px; margin: auto">
-        <div><p>Share texts or files in your local network</p></div>
-        <textarea name="" id="" cols="100" rows="10">{{ .data }}</textarea>
+        <div><p style="font-weight: bold;">Share texts and files in your local network</p></div>
+        <textarea name="" id="" cols="100" rows="15">{{ .data }}</textarea>
+        <div id="div-mobile" class="up-box">
+            <!-- <input name="photo" type="file" id="upLoadOneFile" accept="image/*"> -->
+            <input name="photo" type="file" id="upLoadOneFile" multiple onchange="handleSelectFilesChange(this)" >
+        </div>
         <form action="/" method="POST" id="dForm">
-            <textarea name="sData" id="sData" cols="100" rows="10" ondrop="dropHandler(event);" ondragover="dragOverHandler(event);"></textarea>
+            <textarea name="sData" id="sData" cols="100" rows="4"
+             placeholder="Input text and submit or drop files on the page"></textarea>
             <br>
         </form>
         <form action="/clearFile" method="POST" id="cForm" style="display: none"></form>
@@ -24,7 +29,7 @@
         </div>
         <div style="padding: 3px;" id="fileList">
             {{ range .fileList }}
-            <a style="" href="{{.N}}">{{.Ns}}</a>
+            <a style="margin-right: 10px;" href="{{.N}}">{{.Ns}}</a>
             {{ end }}
         </div>
         <br>
@@ -38,11 +43,30 @@
 </body>
 </html>
 <style>
+    body {
+        border-bottom: 1px #cfc4c4 solid;
+        min-height: 100vh;
+        overflow: auto;
+    }
     textarea {
         /* will prevent resizing horizontally */
         max-width: 95%;
         resize:vertical;
     }
+    @media screen and (min-width: 769px) {
+        #div-mobile { display: none; }
+        #div-desktop { display: block; }
+    }
+
+    @media screen and (max-width: 768px) {
+        #div-mobile { display: block; }
+        #div-desktop { display: none; }
+    }
+    .up-box{
+        margin: 5px;
+        text-align: left;
+    }
+
 </style>
 <script>
 
@@ -61,34 +85,8 @@
                     console.log('... file[' + i + '].name = ' + file.name);
                     console.log(file)
 
-                    let formData = new FormData();
-                    formData.append("file", file);
-                    formData.append("isImg", isFileImage(file)?"1":"0");
-
-                    fetch('/upload', {method: "POST", body: formData})
-                        .then((response) => {
-                            if (!response.ok) {
-                                throw new Error(`HTTP error! Status: ${ response.status }`);
-                            }
-                            return response.text();
-                        }).then((response) => {
-                        console.log(response)
-                        if (isFileImage(file))
-                        {
-                            let elem = document.createElement("img");
-                            elem.src = response;
-                            elem.style.width = "300px";
-                            elem.style.padding = "5px";
-                            let list = document.getElementById("imgList");
-                            list.insertBefore(elem, list.firstChild);
-                        } else {
-                            let elem = document.createElement("a");
-                            elem.href = response;
-                            elem.text = file.name;
-                            let list = document.getElementById("fileList");
-                            list.append(elem, list.firstChild);
-                        }
-                    });
+                    uploadFile(file)
+                   
                 }
             }
         } else {
@@ -97,6 +95,48 @@
                 console.log('... file[' + i + '].name = ' + ev.dataTransfer.files[i].name);
             }
         }
+    }
+
+    function handleSelectFilesChange(input) {
+        console.log(input.files);
+        // return
+        for(let i = 0; i < input.files.length; i++) {
+                let file = input.files[i];
+                uploadFile(file)
+            }
+        
+    }
+
+    function uploadFile(file) {
+        let formData = new FormData();
+        formData.append("file", file);
+        formData.append("isImg", isFileImage(file)?"1":"0");
+
+        fetch('/upload', {method: "POST", body: formData})
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${ response.status }`);
+                }
+                return response.text();
+            }).then((response) => {
+            console.log(response)
+            if (isFileImage(file))
+            {
+                let elem = document.createElement("img");
+                elem.src = response;
+                elem.style.width = "300px";
+                elem.style.padding = "5px";
+                let list = document.getElementById("imgList");
+                list.insertBefore(elem, list.firstChild);
+            } else {
+                let elem = document.createElement("a");
+                elem.href = response;
+                elem.style = "margin-right: 10px;"
+                elem.text = file.name;
+                let list = document.getElementById("fileList");
+                list.append(elem, list.firstChild);
+            }
+        });
     }
 
     function isFileImage(file) {
