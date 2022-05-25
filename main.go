@@ -10,17 +10,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/spf13/cobra"
 )
-
-const TmpFileDir = "tmpFile"
-
-func init() {
-	tDir := filepath.Join(".", TmpFileDir)
-	err := os.MkdirAll(tDir, os.ModePerm)
-	if err != nil {
-		panic(err)
-	}
-}
 
 type tmpFile struct {
 	T  string `json:"t"`
@@ -28,7 +19,14 @@ type tmpFile struct {
 	Ns string `json:"ns"`
 }
 
-func main() {
+var (
+	address    string
+	port       string
+	tmpFileDir string
+)
+
+func runServer() {
+	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
 	r.SetTrustedProxies(nil)
 
@@ -65,7 +63,7 @@ func main() {
 
 		saveName := strconv.FormatInt(time.Now().UnixNano(), 10) + path.Ext(file.Filename)
 
-		err = c.SaveUploadedFile(file, TmpFileDir+"/"+saveName)
+		err = c.SaveUploadedFile(file, tmpFileDir+"/"+saveName)
 		if err != nil {
 			fmt.Println(err)
 			c.String(http.StatusBadRequest, err.Error())
@@ -85,10 +83,57 @@ func main() {
 		c.String(http.StatusOK, fileUrl)
 	})
 
-	r.Static("/tFile", "./"+TmpFileDir)
+	r.Static("/tFile", "./"+tmpFileDir)
 	r.Static("/static", "./static")
 
-	fmt.Println("server start at http://127.0.0.1:7777")
+	ads := address + ":" + port
+	fmt.Println("server started at http://" + ads)
+	r.Run(ads)
 
-	r.Run(":7777")
+}
+
+var rootCmd = &cobra.Command{
+	Use:   "simpleshare",
+	Short: "Share texts and files in local network",
+	Long: `
+  A Simple http service for share texts and files in local network
+built in Go.
+  source:0 https://github.com/keller0/simpleshare`,
+	Example: "./simpleshare  -a 127.0.0.1 -p 7777 -f tmpFile",
+	Run: func(cmd *cobra.Command, args []string) {
+		tDir := filepath.Join(".", tmpFileDir)
+		err := os.MkdirAll(tDir, os.ModePerm)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println(tDir)
+		runServer()
+	},
+}
+
+func Execute() {
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+}
+
+func init() {
+	rootCmd.AddCommand(versionCmd)
+	rootCmd.PersistentFlags().StringVarP(&port, "port", "p", "7777", "listen port")
+	rootCmd.PersistentFlags().StringVarP(&address, "address", "a", "127.0.0.1", "listen address")
+	rootCmd.PersistentFlags().StringVarP(&tmpFileDir, "folder", "f", "tmpFile", "tmp file folder")
+
+}
+
+var versionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "Print the version number of simpleshare",
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Println("simpleshare  v0.0.1")
+	},
+}
+
+func main() {
+	Execute()
 }
