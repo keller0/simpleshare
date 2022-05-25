@@ -106,7 +106,7 @@ built in Go.
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println(tDir)
+		fmt.Println("tmp file folder:", tDir)
 		runServer()
 	},
 }
