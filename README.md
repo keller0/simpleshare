@@ -26,6 +26,7 @@ Flags:
 
 Use "simpleshare [command] --help" for more information about a command.
 ```
+
 ### Web UI
 
 ![ui](https://user-images.githubusercontent.com/19371712/170302601-6d591f06-1ae8-4578-8886-8059401b5715.png)

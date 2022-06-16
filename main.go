@@ -25,7 +25,7 @@ var (
 	tmpFileDir string
 )
 
-func runServer() {
+func runServer() error {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
 	r.SetTrustedProxies(nil)
@@ -88,7 +88,7 @@ func runServer() {
 
 	ads := address + ":" + port
 	fmt.Println("server started at http://" + ads)
-	r.Run(ads)
+	return r.Run(ads)
 
 }
 
@@ -98,8 +98,10 @@ var rootCmd = &cobra.Command{
 	Long: `
   A Simple http service for share texts and files in local network
 built in Go.
-  source:0 https://github.com/keller0/simpleshare`,
-	Example: "./simpleshare  -a 127.0.0.1 -p 7777 -f tmpFile",
+  source: https://github.com/keller0/simpleshare`,
+	CompletionOptions: cobra.CompletionOptions{HiddenDefaultCmd: true},
+	Version:           "0.0.2",
+	Example:           "./simpleshare  -a 127.0.0.1 -p 7777 -f tmpFile",
 	Run: func(cmd *cobra.Command, args []string) {
 		tDir := filepath.Join(".", tmpFileDir)
 		err := os.MkdirAll(tDir, os.ModePerm)
@@ -107,7 +109,10 @@ built in Go.
 			panic(err)
 		}
 		fmt.Println("tmp file folder:", tDir)
-		runServer()
+		err = runServer()
+		if err != nil {
+			fmt.Println(err)
+		}
 	},
 }
 
@@ -119,19 +124,11 @@ func Execute() {
 }
 
 func init() {
-	rootCmd.AddCommand(versionCmd)
+
 	rootCmd.PersistentFlags().StringVarP(&port, "port", "p", "7777", "listen port")
 	rootCmd.PersistentFlags().StringVarP(&address, "address", "a", "127.0.0.1", "listen address")
 	rootCmd.PersistentFlags().StringVarP(&tmpFileDir, "folder", "f", "tmpFile", "tmp file folder")
 
-}
-
-var versionCmd = &cobra.Command{
-	Use:   "version",
-	Short: "Print the version number of simpleshare",
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("simpleshare  v0.0.1")
-	},
 }
 
 func main() {
