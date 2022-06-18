@@ -6,14 +6,17 @@
 
 ### Build and run
 
-```shell
+```
 go build -mod vendor
 
 ./simpleshare -h
 
   A Simple http service for share texts and files in local network
 built in Go.
-  source:0 https://github.com/keller0/simpleshare
+  source: https://github.com/keller0/simpleshare
+
+Usage:
+  simpleshare [flags]
 
 Examples:
 ./simpleshare  -a 127.0.0.1 -p 7777 -f tmpFile
@@ -23,8 +26,7 @@ Flags:
   -f, --folder string    tmp file folder (default "tmpFile")
   -h, --help             help for simpleshare
   -p, --port string      listen port (default "7777")
-
-Use "simpleshare [command] --help" for more information about a command.
+  -v, --version          version for simpleshare
 ```
 
 ### Web UI
