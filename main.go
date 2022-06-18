@@ -4,10 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"path"
 	"path/filepath"
-	"strconv"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/cobra"
@@ -61,7 +58,8 @@ func runServer() error {
 			c.String(http.StatusBadRequest, err.Error())
 		}
 
-		saveName := strconv.FormatInt(time.Now().UnixNano(), 10) + path.Ext(file.Filename)
+		// saveName := strconv.FormatInt(time.Now().UnixNano(), 10) + path.Ext(file.Filename)
+		saveName := file.Filename
 
 		err = c.SaveUploadedFile(file, tmpFileDir+"/"+saveName)
 		if err != nil {
