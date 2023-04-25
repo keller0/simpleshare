@@ -29,6 +29,12 @@ const (
 	requiredWithAllTag    = "required_with_all"
 	requiredIfTag         = "required_if"
 	requiredUnlessTag     = "required_unless"
+	excludedWithoutAllTag = "excluded_without_all"
+	excludedWithoutTag    = "excluded_without"
+	excludedWithTag       = "excluded_with"
+	excludedWithAllTag    = "excluded_with_all"
+	excludedIfTag         = "excluded_if"
+	excludedUnlessTag     = "excluded_unless"
 	skipValidationTag     = "-"
 	diveTag               = "dive"
 	keysTag               = "keys"
@@ -80,11 +86,16 @@ type Validate struct {
 	aliases          map[string]string
 	validations      map[string]internalValidationFuncWrapper
 	transTagFunc     map[ut.Translator]map[string]TranslationFunc // map[<locale>]map[<tag>]TranslationFunc
+	rules            map[reflect.Type]map[string]string
 	tagCache         *tagCache
 	structCache      *structCache
 }
 
 // New returns a new instance of 'validate' with sane defaults.
+// Validate is designed to be thread-safe and used as a singleton instance.
+// It caches information about your struct and validations,
+// in essence only parsing your validation tags once per struct type.
+// Using multiple instances neglects the benefit of caching.
 func New() *Validate {
 
 	tc := new(tagCache)
@@ -111,7 +122,8 @@ func New() *Validate {
 
 		switch k {
 		// these require that even if the value is nil that the validation should run, omitempty still overrides this behaviour
-		case requiredIfTag, requiredUnlessTag, requiredWithTag, requiredWithAllTag, requiredWithoutTag, requiredWithoutAllTag:
+		case requiredIfTag, requiredUnlessTag, requiredWithTag, requiredWithAllTag, requiredWithoutTag, requiredWithoutAllTag,
+			excludedIfTag, excludedUnlessTag, excludedWithTag, excludedWithAllTag, excludedWithoutTag, excludedWithoutAllTag:
 			_ = v.registerValidation(k, wrapFunc(val), true, true)
 		default:
 			// no need to error check here, baked in will always be valid
@@ -138,17 +150,54 @@ func (v *Validate) SetTagName(name string) {
 	v.tagName = name
 }
 
+// ValidateMapCtx validates a map using a map of validation rules and allows passing of contextual
+// validation validation information via context.Context.
+func (v Validate) ValidateMapCtx(ctx context.Context, data map[string]interface{}, rules map[string]interface{}) map[string]interface{} {
+	errs := make(map[string]interface{})
+	for field, rule := range rules {
+		if ruleObj, ok := rule.(map[string]interface{}); ok {
+			if dataObj, ok := data[field].(map[string]interface{}); ok {
+				err := v.ValidateMapCtx(ctx, dataObj, ruleObj)
+				if len(err) > 0 {
+					errs[field] = err
+				}
+			} else if dataObjs, ok := data[field].([]map[string]interface{}); ok {
+				for _, obj := range dataObjs {
+					err := v.ValidateMapCtx(ctx, obj, ruleObj)
+					if len(err) > 0 {
+						errs[field] = err
+					}
+				}
+			} else {
+				errs[field] = errors.New("The field: '" + field + "' is not a map to dive")
+			}
+		} else if ruleStr, ok := rule.(string); ok {
+			err := v.VarCtx(ctx, data[field], ruleStr)
+			if err != nil {
+				errs[field] = err
+			}
+		}
+	}
+	return errs
+}
+
+// ValidateMap validates map data from a map of tags
+func (v *Validate) ValidateMap(data map[string]interface{}, rules map[string]interface{}) map[string]interface{} {
+	return v.ValidateMapCtx(context.Background(), data, rules)
+}
+
 // RegisterTagNameFunc registers a function to get alternate names for StructFields.
 //
 // eg. to use the names which have been specified for JSON representations of structs, rather than normal Go field names:
 //
-//    validate.RegisterTagNameFunc(func(fld reflect.StructField) string {
-//        name := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]
-//        if name == "-" {
-//            return ""
-//        }
-//        return name
-//    })
+//	validate.RegisterTagNameFunc(func(fld reflect.StructField) string {
+//	    name := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]
+//	    // skip if tag key says it should be ignored
+//	    if name == "-" {
+//	        return ""
+//	    }
+//	    return name
+//	})
 func (v *Validate) RegisterTagNameFunc(fn TagNameFunc) {
 	v.tagNameFunc = fn
 	v.hasTagNameFunc = true
@@ -175,11 +224,11 @@ func (v *Validate) RegisterValidationCtx(tag string, fn FuncCtx, callValidationE
 
 func (v *Validate) registerValidation(tag string, fn FuncCtx, bakedIn bool, nilCheckable bool) error {
 	if len(tag) == 0 {
-		return errors.New("Function Key cannot be empty")
+		return errors.New("function Key cannot be empty")
 	}
 
 	if fn == nil {
-		return errors.New("Function cannot be empty")
+		return errors.New("function cannot be empty")
 	}
 
 	_, ok := restrictedTags[tag]
@@ -232,6 +281,34 @@ func (v *Validate) RegisterStructValidationCtx(fn StructLevelFuncCtx, types ...i
 		}
 
 		v.structLevelFuncs[reflect.TypeOf(t)] = fn
+	}
+}
+
+// RegisterStructValidationMapRules registers validate map rules.
+// Be aware that map validation rules supersede those defined on a/the struct if present.
+//
+// NOTE: this method is not thread-safe it is intended that these all be registered prior to any validation
+func (v *Validate) RegisterStructValidationMapRules(rules map[string]string, types ...interface{}) {
+	if v.rules == nil {
+		v.rules = make(map[reflect.Type]map[string]string)
+	}
+
+	deepCopyRules := make(map[string]string)
+	for i, rule := range rules {
+		deepCopyRules[i] = rule
+	}
+
+	for _, t := range types {
+		typ := reflect.TypeOf(t)
+
+		if typ.Kind() == reflect.Ptr {
+			typ = typ.Elem()
+		}
+
+		if typ.Kind() != reflect.Struct {
+			continue
+		}
+		v.rules[typ] = deepCopyRules
 	}
 }
 
@@ -295,7 +372,7 @@ func (v *Validate) StructCtx(ctx context.Context, s interface{}) (err error) {
 		val = val.Elem()
 	}
 
-	if val.Kind() != reflect.Struct || val.Type() == timeType {
+	if val.Kind() != reflect.Struct || val.Type().ConvertibleTo(timeType) {
 		return &InvalidValidationError{Type: reflect.TypeOf(s)}
 	}
 
@@ -340,7 +417,7 @@ func (v *Validate) StructFilteredCtx(ctx context.Context, s interface{}, fn Filt
 		val = val.Elem()
 	}
 
-	if val.Kind() != reflect.Struct || val.Type() == timeType {
+	if val.Kind() != reflect.Struct || val.Type().ConvertibleTo(timeType) {
 		return &InvalidValidationError{Type: reflect.TypeOf(s)}
 	}
 
@@ -388,7 +465,7 @@ func (v *Validate) StructPartialCtx(ctx context.Context, s interface{}, fields .
 		val = val.Elem()
 	}
 
-	if val.Kind() != reflect.Struct || val.Type() == timeType {
+	if val.Kind() != reflect.Struct || val.Type().ConvertibleTo(timeType) {
 		return &InvalidValidationError{Type: reflect.TypeOf(s)}
 	}
 
@@ -409,7 +486,10 @@ func (v *Validate) StructPartialCtx(ctx context.Context, s interface{}, fields .
 		if len(flds) > 0 {
 
 			vd.misc = append(vd.misc[0:0], name...)
-			vd.misc = append(vd.misc, '.')
+			// Don't append empty name for unnamed structs
+			if len(vd.misc) != 0 {
+				vd.misc = append(vd.misc, '.')
+			}
 
 			for _, s := range flds {
 
@@ -475,7 +555,7 @@ func (v *Validate) StructExceptCtx(ctx context.Context, s interface{}, fields ..
 		val = val.Elem()
 	}
 
-	if val.Kind() != reflect.Struct || val.Type() == timeType {
+	if val.Kind() != reflect.Struct || val.Type().ConvertibleTo(timeType) {
 		return &InvalidValidationError{Type: reflect.TypeOf(s)}
 	}
 
@@ -533,7 +613,7 @@ func (v *Validate) Var(field interface{}, tag string) error {
 }
 
 // VarCtx validates a single variable using tag style validation and allows passing of contextual
-// validation validation information via context.Context.
+// validation information via context.Context.
 // eg.
 // var i int
 // validate.Var(i, "gt=1,lt=10")
@@ -552,6 +632,7 @@ func (v *Validate) VarCtx(ctx context.Context, field interface{}, tag string) (e
 	}
 
 	ctag := v.fetchCacheTag(tag)
+
 	val := reflect.ValueOf(field)
 	vd := v.pool.Get().(*validate)
 	vd.top = val
