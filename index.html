@@ -27,6 +27,10 @@
             <button onclick="location.href = '/';" style="margin-left: 30px;background: gray;">Refresh</button>
             <button type="submit" form="cForm"  style="margin-left: 30px;background: #d25a5a;">DeleteFiles</button>
         </div>
+        <div class="progress-bar">
+            <div id="progressName"></div>
+            <div id="progress"></div>
+          </div>
         <div style="padding: 3px;" id="fileList">
             {{ range .fileList }}
             <a style="margin-right: 10px;" href="{{.N}}">{{.Ns}}</a>
@@ -67,6 +71,20 @@
         text-align: left;
     }
 
+    .progress-bar {
+        width: 100%;
+        background-color: #ddd;
+    }
+    #progress {
+        width: 0%;
+        height: 1em;
+        background-color: #4CAF50;
+        text-align: left;
+    }
+    #progressName {
+        width: 100%;
+        text-align: left;
+    }
 </style>
 <script>
 
@@ -108,35 +126,49 @@
     }
 
     function uploadFile(file) {
-        let formData = new FormData();
-        formData.append("file", file);
-        formData.append("isImg", isFileImage(file)?"1":"0");
 
-        fetch('/upload', {method: "POST", body: formData})
-            .then((response) => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${ response.status }`);
-                }
-                return response.text();
-            }).then((response) => {
-            console.log(response)
-            if (isFileImage(file))
-            {
-                let elem = document.createElement("img");
-                elem.src = response;
-                elem.style.width = "300px";
-                elem.style.padding = "5px";
-                let list = document.getElementById("imgList");
-                list.insertBefore(elem, list.firstChild);
-            } else {
-                let elem = document.createElement("a");
-                elem.href = response;
-                elem.style = "margin-right: 10px;"
-                elem.text = file.name;
-                let list = document.getElementById("fileList");
-                list.append(elem, list.firstChild);
+        const progressBar = document.getElementById('progress');
+        const progressName = document.getElementById('progressName');
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append("isImg", isFileImage(file)?"1":"0");
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/upload', true);
+        xhr.upload.onprogress = e => {
+            progressName.innerText = file.name + "⏫";
+            if (e.lengthComputable) {
+            const percentComplete = (e.loaded / e.total) * 100;
+            progressBar.style.width = `${percentComplete}%`;
             }
-        });
+        };
+        xhr.onload = function(e) {
+            console.log(e)
+            if (xhr.status === 200) {
+                // alert("Upload successful!");
+                progressName.innerText = file.name + "✅";
+                if (isFileImage(file))
+                {
+                    let elem = document.createElement("img");
+                    elem.src = e.currentTarget.response;
+                    elem.style.width = "300px";
+                    elem.style.padding = "5px";
+                    let list = document.getElementById("imgList");
+                    list.insertBefore(elem, list.firstChild);
+                } else {
+                    let elem = document.createElement("a");
+                    elem.href = e.currentTarget.response;
+                    elem.style = "margin-right: 10px;"
+                    elem.text = file.name;
+                    let list = document.getElementById("fileList");
+                    list.append(elem, list.firstChild);
+                }
+            } else {
+                alert("Error uploading files. Please try again.");
+            }
+        };
+
+        xhr.send(formData);
     }
 
     function isFileImage(file) {
