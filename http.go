@@ -4,9 +4,9 @@ import (
 	"embed"
 	"fmt"
 	"html/template"
-	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 
 	"github.com/gin-gonic/gin"
@@ -103,7 +103,7 @@ func setRouter(r *gin.Engine) {
 
 // load files in tmpFileDir
 func loadOldFiles() {
-	files, err := ioutil.ReadDir(tmpFileDir)
+	files, err := os.ReadDir(tmpFileDir)
 	if err != nil {
 		log.Fatal(err)
 	}
