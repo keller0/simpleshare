@@ -1,7 +1,9 @@
 package main
 
 import (
+	"embed"
 	"fmt"
+	"html/template"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -9,6 +11,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
+
+//go:embed web
+var webDir embed.FS
 
 type tmpFile struct {
 	T  string `json:"t"`
@@ -43,8 +48,10 @@ func runServer() error {
 
 func setRouter(r *gin.Engine) {
 
-	r.LoadHTMLGlob("index.html")
+	tempHtml := template.Must(template.New("").ParseFS(webDir, "web/*.html"))
+	r.SetHTMLTemplate(tempHtml)
 
+	r.StaticFS("/static", http.FS(webDir))
 	r.GET("/", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "index.html", gin.H{"data": sData, "imaList": imgList, "fileList": fileList})
 	})
@@ -91,7 +98,6 @@ func setRouter(r *gin.Engine) {
 	})
 
 	r.Static("/tFile", "./"+tmpFileDir)
-	r.Static("/static", "./static")
 
 }
 
