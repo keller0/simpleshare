@@ -1,5 +1,4 @@
-//go:build !amd64 || !go1.16 || go1.21
-// +build !amd64 !go1.16 go1.21
+// +build !amd64 !go1.16 go1.23
 
 /*
 * Copyright 2023 ByteDance Inc.
@@ -31,7 +30,7 @@ import (
 )
 
 func init() {
-     println("WARNING: sonic only supports Go1.16~1.20 && CPU amd64, but your environment is not suitable")
+     println("WARNING: sonic only supports Go1.16~1.22 && CPU amd64, but your environment is not suitable")
 }
 
 const (
@@ -113,10 +112,10 @@ func (self *Decoder) CheckTrailings() error {
 func (self *Decoder) Decode(val interface{}) error {
     r := bytes.NewBufferString(self.s)
    dec := json.NewDecoder(r)
-   if (self.f | uint64(OptionUseNumber)) != 0  {
+   if (self.f & uint64(OptionUseNumber)) != 0  {
        dec.UseNumber()
    }
-   if (self.f | uint64(OptionDisableUnknown)) != 0  {
+   if (self.f & uint64(OptionDisableUnknown)) != 0  {
        dec.DisallowUnknownFields()
    }
    return dec.Decode(val)
@@ -170,35 +169,13 @@ func Pretouch(vt reflect.Type, opts ...option.CompileOption) error {
      return nil
 }
 
-type StreamDecoder struct {
-   r       io.Reader
-   buf     []byte
-   scanp   int
-   scanned int64
-   err     error
-   Decoder
-}
+type StreamDecoder = json.Decoder
 
 // NewStreamDecoder adapts to encoding/json.NewDecoder API.
 //
 // NewStreamDecoder returns a new decoder that reads from r.
 func NewStreamDecoder(r io.Reader) *StreamDecoder {
-   return &StreamDecoder{r : r}
-}
-
-// Decode decodes input stream into val with corresponding data. 
-// Redundantly bytes may be read and left in its buffer, and can be used at next call.
-// Either io error from underlying io.Reader (except io.EOF) 
-// or syntax error from data will be recorded and stop subsequently decoding.
-func (self *StreamDecoder) Decode(val interface{}) (err error) {
-   dec := json.NewDecoder(self.r)
-   if (self.f | uint64(OptionUseNumber)) != 0  {
-       dec.UseNumber()
-   }
-   if (self.f | uint64(OptionDisableUnknown)) != 0  {
-       dec.DisallowUnknownFields()
-   }
-   return dec.Decode(val)
+   return json.NewDecoder(r)
 }
 
 // SyntaxError represents json syntax error

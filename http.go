@@ -30,7 +30,10 @@ var (
 func runServer() error {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
-	r.SetTrustedProxies(nil)
+	err := r.SetTrustedProxies(nil)
+	if err != nil {
+		panic(err)
+	}
 
 	setRouter(r)
 
@@ -109,15 +112,11 @@ func loadOldFiles() {
 	}
 
 	for _, f := range files {
-		// fmt.Println(f.Name())
-
 		fileUrl := "tFile/" + f.Name()
 		if isImgSimple(f.Name()) {
 			imgList = append([]string{fileUrl}, imgList...)
-
 		} else {
 			fileList = append(fileList, tmpFile{T: "0", N: fileUrl, Ns: f.Name()})
-
 		}
 	}
 
