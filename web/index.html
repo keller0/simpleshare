@@ -11,13 +11,13 @@
 
     <div style="text-align: center;max-width: 920px; margin: auto">
         <div><p style="font-weight: bold;">Share texts and files in your local network</p></div>
-        <textarea name="" id="" cols="100" rows="15">{{ .data }}</textarea>
+        <textarea name="" id="showDataArea" cols="100" rows="15">{{ .data }}</textarea>
         <div id="div-mobile" class="up-box">
             <!-- <input name="photo" type="file" id="upLoadOneFile" accept="image/*"> -->
             <input name="photo" type="file" id="upLoadOneFile" multiple onchange="handleSelectFilesChange(this)" >
         </div>
         <form action="/" method="POST" id="dForm">
-            <textarea name="sData" id="sData" cols="100" rows="4"
+            <textarea name="sData" id="inputDataArea" cols="100" rows="4"
              placeholder="Input text and submit or drop files on the page"></textarea>
             <br>
         </form>
@@ -38,7 +38,7 @@
         </div>
         <br>
         <div id="imgList">
-            {{ range .imaList }}
+            {{ range .imgList }}
             <img style="width: 300px; padding: 5px" src="{{ . }}" alt="">
             {{ end }}
         </div>
@@ -57,9 +57,18 @@
         max-width: 95%;
         resize:vertical;
     }
+    .progress-bar {
+        width: 90%;
+        margin: auto;
+        background-color: #ddd;
+    }
     @media screen and (min-width: 769px) {
         #div-mobile { display: none; }
         #div-desktop { display: block; }
+
+        #inputDataArea {width: 700px;}
+        #showDataArea {width: 700px;}
+        .progress-bar{width: 700px;}
     }
 
     @media screen and (max-width: 768px) {
@@ -69,12 +78,6 @@
     .up-box{
         margin: 5px;
         text-align: left;
-    }
-
-    .progress-bar {
-        width: 90%;
-        margin: auto;
-        background-color: #ddd;
     }
     #progress {
         width: 0%;
