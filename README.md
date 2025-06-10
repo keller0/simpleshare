@@ -7,7 +7,7 @@
 ### Build and run
 
 ```
-go build -mod vendor
+go build
 
 ./simpleshare -h
 
