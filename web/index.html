@@ -9,291 +9,391 @@
 </head>
 <body ondrop="dropHandler(event);" ondragover="dragOverHandler(event);">
 
-    <div style="text-align: center;max-width: 920px; margin: auto">
-        <div><p style="font-weight: bold;">Share texts and files in your local network</p></div>
-        <textarea name="" id="showDataArea" cols="100" rows="15">{{ .data }}</textarea>
-        <div id="div-mobile" class="up-box">
-            <!-- <input name="photo" type="file" id="upLoadOneFile" accept="image/*"> -->
-            <input name="photo" type="file" id="upLoadOneFile" multiple onchange="handleSelectFilesChange(this)" >
-        </div>
-        <form action="/" method="POST" id="dForm">
-            <textarea name="sData" id="inputDataArea" cols="100" rows="4"
-             placeholder="Input text and submit or drop files on the page"></textarea>
-            <br>
-        </form>
-        <form action="/clearFile" method="POST" id="cForm" style="display: none"></form>
-        <div style="padding: 28px;">
-            <input type="submit" value="Submit" form="dForm"  style="background: azure;">
-            <button onclick="location.href = '/';" style="margin-left: 30px;background: gray;">Refresh</button>
-            <button onclick="confirmDeleteAllFiles()" style="margin-left: 30px;background: #d25a5a;">DeleteFiles</button>
-        </div>
-        
-        <!-- 上传进度区域 -->
-        <div id="uploadProgress" class="upload-progress-container" style="display: none;">
-            <div class="progress-header">
-                <span id="progressTitle">Uploading files...</span>
-            </div>
-            <div id="progressList"></div>
-        </div>
+    <div class="container">
+        <!-- 标题区域 -->
+        <header class="header">
+            <h1 class="title">simple share</h1>
+            <p class="subtitle">Share texts and files in your local network</p>
+        </header>
 
-        <!-- 文件列表 -->
-        <div style="margin: 10px auto auto; width: 90%" id="fileList">
-            {{ range .fileList }}
-            <div class="file-item">
-                <a href="{{.N}}" class="file-link">{{.Ns}}</a>
-                <button onclick="deleteFile('{{.Ns}}')" class="delete-btn" title="Delete file">🗑️</button>
+        <!-- 主要内容区域 -->
+        <main class="main-content">
+            <!-- 显示区域 -->
+            <section class="display-section">
+                <label class="section-label">Shared Content</label>
+                <textarea id="showDataArea" class="display-area" readonly>{{ .data }}</textarea>
+            </section>
+
+            <!-- 输入区域 -->
+            <section class="input-section">
+                <label class="section-label">Input Text</label>
+                <textarea name="sData" id="inputDataArea" class="input-area" 
+                          placeholder="Input text and submit or drop files on the page"></textarea>
+                
+                           <!-- 操作按钮 -->
+                <div class="action-buttons">
+                    <button onclick="submitText()" class="btn btn-primary">Submit</button>
+                    <button onclick="fetchData()" class="btn btn-secondary">Fetch</button>
+                    <button onclick="confirmDeleteAllFiles()" class="btn btn-danger">Clear All</button>
+                </div>
+                
+                <!-- 文件上传区域 -->
+                <div class="upload-section">
+                    <label class="section-label">Upload Files</label>
+                    <div class="file-input-wrapper">
+                        <input type="file" id="upLoadOneFile" multiple onchange="handleSelectFilesChange(this)" class="file-input">
+                        <label for="upLoadOneFile" class="file-input-label">
+                            <span class="upload-icon">📁</span>
+                            <span>Choose files or drag & drop</span>
+                        </label>
+                    </div>
+                </div>
+
+               
+            </section>
+
+            <!-- 上传进度区域 -->
+            <section id="uploadProgress" class="upload-progress" style="display: none;">
+                <div class="progress-header">
+                    <span class="progress-title">Uploading files...</span>
+                </div>
+                <div id="progressList" class="progress-list"></div>
+            </section>
+
+            <!-- 文件列表 -->
+            <section class="files-section">
+                <label class="section-label">Files</label>
+                <div id="fileList" class="file-list">
+                    {{ range .fileList }}
+                    <div class="file-item">
+                        <a href="{{.N}}" class="file-link">{{.Ns}}</a>
+                        <button onclick="deleteFile('{{.Ns}}')" class="delete-btn" title="Delete file">×</button>
+                    </div>
+                    {{ end }}
+                </div>
+            </section>
+
+            <!-- 图片列表 -->
+            <section class="images-section">
+                <label class="section-label">Images</label>
+                <div id="imgList" class="image-list">
+                    {{ range .imgList }}
+                    <div class="image-item">
+                        <img src="{{ . }}" alt="" class="image" onclick="openImageModal('{{ . }}')">
+                        <button class="delete-btn image-delete-btn" title="Delete image" data-filename="{{ . }}">×</button>
+                    </div>
+                    {{ end }}
+                </div>
+            </section>
+
+            <!-- 图片模态框 -->
+            <div id="imageModal" class="image-modal" onclick="closeImageModal()">
+                <div class="modal-content" onclick="event.stopPropagation()">
+                    <div class="modal-header">
+                        <span class="modal-title">Image Viewer</span>
+                        <button class="modal-close" onclick="closeImageModal()">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <img id="modalImage" src="" alt="" class="modal-image">
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" onclick="downloadImage()">Download</button>
+                        <button class="btn btn-danger" onclick="deleteCurrentImage()">Delete</button>
+                        <button class="btn btn-primary" onclick="closeImageModal()">Close</button>
+                    </div>
+                </div>
             </div>
-            {{ end }}
-        </div>
-        <br>
-        
-        <!-- 图片列表 -->
-        <div id="imgList" class="img-list">
-            {{ range .imgList }}
-            <div class="img-item">
-                <img src="{{ . }}" alt="">
-                <button class="delete-btn img-delete-btn" title="Delete image" data-filename="{{ . }}">🗑️</button>
-            </div>
-            {{ end }}
-        </div>
+        </main>
     </div>
 
 </body>
 </html>
+
 <style>
+    /* 基础样式重置 */
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
     body {
-        border-bottom: 1px #cfc4c4 solid;
-        min-height: 100vh;
-        overflow: auto;
-        font-family: Arial, sans-serif;
-    }
-    textarea {
-        /* will prevent resizing horizontally */
-        max-width: 95%;
-        resize:vertical;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        padding: 8px;
-    }
-    .progress-bar {
-        width: 90%;
-        margin: auto;
-        background-color: #ddd;
-    }
-    @media screen and (min-width: 769px) {
-        #div-mobile { display: none; }
-        #div-desktop { display: block; }
-
-        #inputDataArea {width: 700px;}
-        #showDataArea {width: 700px;}
-        .progress-bar{width: 700px;}
+        font-family: 'Courier New', 'Monaco', 'Menlo', monospace;
+        background: #0a0a0a;
+        color: #00ff00;
+        line-height: 1.6;
+        overflow-x: hidden;
     }
 
-    @media screen and (max-width: 768px) {
-        #div-mobile { display: block; }
-        #div-desktop { display: none; }
-        
-        .img-item img {
-            width: 250px;
-        }
+    /* 容器 */
+    .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
     }
-    .up-box{
-        margin: 5px;
-        text-align: left;
+
+    /* 标题区域 */
+    .header {
+        text-align: center;
+        margin-bottom: 40px;
+        padding: 20px 0;
+        border-bottom: 1px solid #333;
     }
-    #progress {
-        width: 0%;
-        height: 1em;
-        background-color: #4CAF50;
-        text-align: left;
-    }
-    #progressName {
-        width: 100%;
+
+    .title {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: #00ff00;
+        text-shadow: 0 0 10px #00ff00;
+        margin-bottom: 10px;
+        letter-spacing: 2px;
         text-align: left;
     }
 
-    /* 上传进度样式 */
-    .upload-progress-container {
-        width: 90%;
-        margin: 20px auto;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        background: #f9f9f9;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    
-    .progress-header {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        padding: 10px 15px;
-        background: #e9ecef;
-        border-radius: 8px 8px 0 0;
-        border-bottom: 1px solid #ddd;
-    }
-    
-    .close-btn {
-        background: none;
-        border: none;
-        font-size: 20px;
-        cursor: pointer;
+    .subtitle {
+        font-size: 1rem;
         color: #666;
+        font-style: italic;
+        text-align: left;
     }
-    
-    .close-btn:hover {
-        color: #333;
+
+    /* 主要内容区域 */
+    .main-content {
+        display: grid;
+        gap: 30px;
     }
-    
+
+    /* 通用区块样式 */
+    .display-section,
+    .input-section,
+    .files-section,
+    .images-section {
+        background: #111;
+        border: 1px solid #333;
+        border-radius: 4px;
+        padding: 20px;
+    }
+
+    .section-label {
+        display: block;
+        font-size: 0.9rem;
+        font-weight: bold;
+        color: #00ff00;
+        margin-bottom: 10px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    /* 文本区域 */
+    .display-area,
+    .input-area {
+        width: 100%;
+        min-height: 120px;
+        background: #000;
+        border: 1px solid #333;
+        border-radius: 2px;
+        color: #00ff00;
+        font-family: inherit;
+        font-size: 0.9rem;
+        padding: 15px;
+        resize: vertical;
+        outline: none;
+        transition: border-color 0.2s ease;
+    }
+
+    .display-area {
+        background: #0a0a0a;
+        color: #ccc;
+        border-color: #444;
+    }
+
+    .input-area:focus {
+        border-color: #00ff00;
+        box-shadow: 0 0 5px rgba(0, 255, 0, 0.3);
+    }
+
+    /* 文件上传区域 */
+    .upload-section {
+        margin: 20px 0;
+    }
+
+    .file-input-wrapper {
+        position: relative;
+        display: inline-block;
+        width: 100%;
+    }
+
+    .file-input {
+        position: absolute;
+        opacity: 0;
+        width: 100%;
+        height: 100%;
+        cursor: pointer;
+    }
+
+    .file-input-label {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 15px;
+        background: #000;
+        border: 2px dashed #333;
+        border-radius: 4px;
+        color: #666;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .file-input-label:hover {
+        border-color: #00ff00;
+        color: #00ff00;
+    }
+
+    .upload-icon {
+        font-size: 1.2rem;
+    }
+
+    /* 按钮样式 */
+    .action-buttons {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+    }
+
+    .btn {
+        padding: 10px 20px;
+        border: 1px solid #333;
+        background: #000;
+        color: #00ff00;
+        font-family: inherit;
+        font-size: 0.9rem;
+        cursor: pointer;
+        border-radius: 2px;
+        transition: all 0.2s ease;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .btn:hover {
+        background: #00ff00;
+        color: #000;
+        border-color: #00ff00;
+    }
+
+    .btn-primary {
+        border-color: #00ff00;
+        color: #00ff00;
+    }
+
+    .btn-primary:hover {
+        background: #00ff00;
+        color: #000;
+    }
+
+    .btn-secondary {
+        border-color: #0066cc;
+        color: #0066cc;
+    }
+
+    .btn-secondary:hover {
+        background: #0066cc;
+        color: #000;
+    }
+
+    .btn-danger {
+        border-color: #cc0000;
+        color: #cc0000;
+    }
+
+    .btn-danger:hover {
+        background: #cc0000;
+        color: #000;
+    }
+
+    /* 上传进度 */
+    .upload-progress {
+        background: #111;
+        border: 1px solid #333;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .progress-header {
+        background: #000;
+        padding: 15px;
+        border-bottom: 1px solid #333;
+        text-align: center;
+        font-weight: bold;
+    }
+
+    .progress-list {
+        padding: 0;
+    }
+
     .progress-item {
-        padding: 10px 15px;
-        border-bottom: 1px solid #eee;
+        padding: 15px;
+        border-bottom: 1px solid #333;
+        background: #0a0a0a;
     }
-    
+
     .progress-item:last-child {
         border-bottom: none;
     }
-    
+
+    .progress-item-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+
+    .status-indicator {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #00ff00;
+        animation: pulse 1s infinite;
+    }
+
+    .status-uploading {
+        background: #ffaa00;
+    }
+
+    .status-success {
+        background: #00ff00;
+    }
+
+    .status-error,
+    .status-cancelled {
+        background: #ff0000;
+    }
+
     .progress-bar {
         width: 100%;
-        height: 8px;
-        background-color: #e9ecef;
-        border-radius: 4px;
+        height: 4px;
+        background: #333;
+        border-radius: 2px;
         overflow: hidden;
-        margin-top: 5px;
+        margin: 10px 0;
     }
-    
+
     .progress-fill {
         height: 100%;
-        background: linear-gradient(90deg, #4CAF50, #45a049);
+        background: #00ff00;
         width: 0%;
         transition: width 0.3s ease;
     }
-    
+
     .progress-info {
         display: flex;
         justify-content: space-between;
-        font-size: 12px;
+        font-size: 0.8rem;
         color: #666;
-        margin-top: 5px;
     }
-    
-    /* 文件项样式 */
-    .file-item {
-        display: inline-flex;
-        align-items: center;
-        margin: 5px 10px 5px 0;
-        padding: 5px 10px;
-        background: #f8f9fa;
-        border: 1px solid #dee2e6;
-        border-radius: 4px;
-        transition: all 0.2s ease;
-    }
-    
-    .file-item:hover {
-        background: #e9ecef;
-        border-color: #adb5bd;
-    }
-    
-    .file-link {
-        text-decoration: none;
-        color: #007bff;
-        margin-right: 8px;
-    }
-    
-    .file-link:hover {
-        text-decoration: underline;
-    }
-    
-    .delete-btn {
-        background: none;
-        border: none;
-        cursor: pointer;
-        font-size: 14px;
-        padding: 2px 4px;
-        border-radius: 3px;
-        transition: background-color 0.2s ease;
-    }
-    
-    .delete-btn:hover {
-        background-color: #ffebee;
-    }
-    
-    /* 图片项样式 */
-    .img-list {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        justify-content: center;
-    }
-    
-    .img-item {
-        position: relative;
-        display: inline-block;
-    }
-    
-    .img-item img {
-        width: 300px;
-        padding: 5px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        transition: transform 0.2s ease;
-    }
-    
-    .img-item:hover img {
-        transform: scale(1.02);
-    }
-    
-    .img-delete-btn {
-        position: absolute;
-        top: 5px;
-        right: 5px;
-        background: rgba(255, 255, 255, 0.9);
-        border: 1px solid #ddd;
-        border-radius: 50%;
-        width: 30px;
-        height: 30px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        opacity: 0;
-        transition: opacity 0.2s ease;
-    }
-    
-    .img-item:hover .img-delete-btn {
-        opacity: 1;
-    }
-    
-    /* 状态指示器 */
-    .status-indicator {
-        display: inline-block;
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        margin-right: 8px;
-    }
-    
-    .status-uploading {
-        background: #ffc107;
-        animation: pulse 1s infinite;
-    }
-    
-    .status-success {
-        background: #28a745;
-    }
-    
-    .status-error {
-        background: #dc3545;
-    }
-    
-    @keyframes pulse {
-        0% { opacity: 1; }
-        50% { opacity: 0.5; }
-        100% { opacity: 1; }
-    }
-    
-    /* 取消按钮样式 */
+
     .cancel-btn {
-        background: #dc3545;
+        background: #ff0000;
         color: white;
         border: none;
         border-radius: 50%;
@@ -301,21 +401,293 @@
         height: 20px;
         cursor: pointer;
         font-size: 12px;
-        margin-left: 8px;
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: background-color 0.2s ease;
+        margin-left: 10px;
     }
-    
+
     .cancel-btn:hover {
-        background: #c82333;
+        background: #cc0000;
     }
-    
-    .status-cancelled {
-        background: #6c757d;
+
+    /* 文件列表 */
+    .file-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .file-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 12px;
+        background: #000;
+        border: 1px solid #333;
+        border-radius: 2px;
+        transition: all 0.2s ease;
+    }
+
+    .file-item:hover {
+        border-color: #00ff00;
+        background: #0a0a0a;
+    }
+
+    .file-link {
+        color: #00ff00;
+        text-decoration: none;
+        font-size: 0.9rem;
+    }
+
+    .file-link:hover {
+        text-decoration: underline;
+    }
+
+    /* 图片列表 */
+    .image-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 15px;
+    }
+
+    .image-item {
+        position: relative;
+        background: #000;
+        border: 1px solid #333;
+        border-radius: 4px;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .image-item:hover {
+        border-color: #00ff00;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 255, 0, 0.2);
+    }
+
+    .image {
+        width: 100%;
+        height: 150px;
+        object-fit: cover;
+        display: block;
+        transition: transform 0.3s ease;
+    }
+
+    .image-item:hover .image {
+        transform: scale(1.05);
+    }
+
+    /* 删除按钮移到右上角 */
+    .image-delete-btn {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        background: rgba(255, 0, 0, 0.8);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        cursor: pointer;
+        font-size: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+        opacity: 0;
+        z-index: 10;
+    }
+
+    .image-item:hover .image-delete-btn {
+        opacity: 1;
+    }
+
+    .image-delete-btn:hover {
+        background: #ff0000;
+        transform: scale(1.1);
+    }
+
+    /* 图片模态框 */
+    .image-modal {
+        display: none;
+        position: fixed;
+        z-index: 10000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.9);
+        backdrop-filter: blur(5px);
+        animation: fadeIn 0.3s ease;
+        cursor: pointer; /* 表示可以点击关闭 */
+    }
+
+    .modal-content {
+        position: relative;
+        margin: 2% auto;
+        width: 90%;
+        max-width: 800px;
+        height: 90%;
+        background: #111;
+        border: 1px solid #333;
+        border-radius: 8px;
+        display: flex;
+        flex-direction: column;
+        animation: slideIn 0.3s ease;
+        cursor: default; /* 内容区域不显示手型光标 */
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px 20px;
+        border-bottom: 1px solid #333;
+        background: #000;
+        border-radius: 8px 8px 0 0;
+    }
+
+    .modal-title {
+        font-size: 1.1rem;
+        font-weight: bold;
+        color: #00ff00;
+    }
+
+    .modal-close {
+        background: none;
+        border: none;
+        color: #666;
+        font-size: 24px;
+        cursor: pointer;
+        padding: 0;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        transition: all 0.2s ease;
+    }
+
+    .modal-close:hover {
+        background: #333;
+        color: #00ff00;
+    }
+
+    .modal-body {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        overflow: hidden;
+    }
+
+    .modal-image {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        border-radius: 4px;
+        box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+    }
+
+    .modal-footer {
+        display: flex;
+        justify-content: center;
+        gap: 15px;
+        padding: 15px 20px;
+        border-top: 1px solid #333;
+        background: #000;
+        border-radius: 0 0 8px 8px;
+    }
+
+    /* 动画 */
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    @keyframes slideIn {
+        from {
+            transform: translateY(-50px);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+
+    /* 响应式设计 */
+    @media (max-width: 768px) {
+        .container {
+            padding: 10px;
+        }
+
+        .title {
+            font-size: 2rem;
+        }
+
+        .action-buttons {
+            flex-direction: column;
+        }
+
+        .btn {
+            width: 100%;
+        }
+
+        .image-list {
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        }
+
+        .image {
+            height: 120px;
+        }
+
+        .modal-content {
+            width: 95%;
+            height: 95%;
+            margin: 2.5% auto;
+        }
+
+        .modal-footer {
+            flex-direction: column;
+            gap: 10px;
+        }
+    }
+
+    /* 滚动条样式 */
+    ::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: #000;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: #333;
+        border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: #00ff00;
+    }
+
+    /* 选择文本样式 */
+    ::selection {
+        background: #00ff00;
+        color: #000;
+    }
+
+    ::-moz-selection {
+        background: #00ff00;
+        color: #000;
     }
 </style>
+
 <script>
     let uploadRequests = new Map(); // 存储所有上传请求
 
@@ -450,7 +822,62 @@
 
     function confirmDeleteAllFiles() {
         if (confirm('Are you sure you want to delete ALL files? This action cannot be undone.')) {
-            document.getElementById('cForm').submit();
+            clearAllFilesAndMsg();
+        }
+    }
+
+    function clearAllFilesAndMsg() {
+        // 显示加载状态
+        const clearBtn = document.querySelector('.btn-danger');
+        const originalText = clearBtn.textContent;
+        clearBtn.textContent = 'Clearing...';
+        clearBtn.disabled = true;
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/clearAll', true);
+        
+        xhr.onload = function() {
+            clearBtn.textContent = originalText;
+            clearBtn.disabled = false;
+            
+            if (xhr.status === 200) {
+                // 清空文件列表和图片列表
+                clearFileLists();
+                showMessage('All files cleared successfully!', 'success');
+            } else {
+                showMessage('Error clearing files. Please try again.', 'error');
+            }
+        };
+
+        xhr.onerror = function() {
+            clearBtn.textContent = originalText;
+            clearBtn.disabled = false;
+            showMessage('Network error. Please try again.', 'error');
+        };
+
+        xhr.ontimeout = function() {
+            clearBtn.textContent = originalText;
+            clearBtn.disabled = false;
+            showMessage('Request timeout. Please try again.', 'error');
+        };
+
+        // 设置超时时间
+        xhr.timeout = 10000; // 10秒
+
+        xhr.send();
+    }
+
+    function clearFileLists() {
+        // 清空文件列表
+        const fileList = document.getElementById('fileList');
+        if (fileList) {
+            fileList.innerHTML = '';
+        }
+
+        // 清空图片列表
+        const imgList = document.getElementById('imgList');
+        if (imgList) {
+            imgList.innerHTML = '';
         }
     }
 
@@ -504,28 +931,37 @@
         };
         
         xhr.onload = function(e) {
-            uploadRequests.delete(progressId); // 清理请求引用
+            uploadRequests.delete(progressId);
             console.log(e);
             if (xhr.status === 200) {
                 updateProgress(progressId, 100, 'Completed');
                 
-                // 延迟添加文件到列表，让用户看到完成状态
                 setTimeout(() => {
                     if (isFileImage(file)) {
                         let imgContainer = document.createElement("div");
-                        imgContainer.className = "img-item";
+                        imgContainer.className = "image-item";
                         imgContainer.innerHTML = `
-                            <img src="${e.currentTarget.response}" alt="">
-                            <button onclick="deleteFile('${file.name}')" class="delete-btn img-delete-btn" title="Delete image" data-filename="${file.name}">🗑️</button>
+                            <img src="${e.currentTarget.response}" alt="" class="image" onclick="openImageModal('${e.currentTarget.response}')">
+                            <button class="delete-btn image-delete-btn" title="Delete image" data-filename="${file.name}">×</button>
                         `;
                         let list = document.getElementById("imgList");
                         list.insertBefore(imgContainer, list.firstChild);
+                        
+                        // 为新添加的图片删除按钮绑定事件
+                        const newDeleteBtn = imgContainer.querySelector('.image-delete-btn');
+                        newDeleteBtn.addEventListener('click', function(e) {
+                            e.stopPropagation(); // 阻止事件冒泡
+                            const filename = this.getAttribute('data-filename');
+                            if (filename) {
+                                deleteFile(filename);
+                            }
+                        });
                     } else {
                         let fileContainer = document.createElement("div");
                         fileContainer.className = "file-item";
                         fileContainer.innerHTML = `
                             <a href="${e.currentTarget.response}" class="file-link">${file.name}</a>
-                            <button onclick="deleteFile('${file.name}')" class="delete-btn" title="Delete file">🗑️</button>
+                            <button onclick="deleteFile('${file.name}')" class="delete-btn" title="Delete file">×</button>
                         `;
                         let list = document.getElementById("fileList");
                         list.insertBefore(fileContainer, list.firstChild);
@@ -611,18 +1047,261 @@
         ev.preventDefault();
     }
 
-    // 添加事件监听器处理图片删除按钮
+    // 修改事件监听器，确保正确处理图片删除
     document.addEventListener('DOMContentLoaded', function() {
         // 为现有的图片删除按钮添加事件监听器
-        document.querySelectorAll('.img-delete-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
+        document.querySelectorAll('.image-delete-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation(); // 阻止事件冒泡
                 const filename = this.getAttribute('data-filename');
                 if (filename) {
-                    // 从 "tFile/filename" 中提取 filename
                     const actualFilename = filename.replace('tFile/', '');
                     deleteFile(actualFilename);
                 }
             });
         });
     });
+
+    // 添加新的函数来处理文本提交和获取数据
+    function submitText() {
+        const textData = document.getElementById('inputDataArea').value;
+        
+        const formData = new FormData();
+        formData.append('sData', textData);
+
+        fetch('/', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.text())
+        .then(html => {
+            // 解析返回的HTML并更新显示区域
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            
+            // 更新显示区域的文本
+            const newData = doc.querySelector('#showDataArea').textContent;
+            document.getElementById('showDataArea').value = newData;
+            
+            // 清空输入区域
+            document.getElementById('inputDataArea').value = '';
+            
+            // 显示成功提示
+            showMessage('Text submitted successfully!', 'success');
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showMessage('Error submitting text. Please try again.', 'error');
+        });
+    }
+
+    function fetchData() {
+        fetch('/')
+        .then(response => response.text())
+        .then(html => {
+            // 解析返回的HTML并更新页面内容
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            
+            // 更新显示区域的文本
+            const newData = doc.querySelector('#showDataArea').textContent;
+            document.getElementById('showDataArea').value = newData;
+            
+            // 更新文件列表
+            updateFileList(doc);
+            
+            // 更新图片列表
+            updateImageList(doc);
+            
+            // 显示成功提示
+            showMessage('Data fetched successfully!', 'success');
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showMessage('Error fetching data. Please try again.', 'error');
+        });
+    }
+
+    function updateFileList(doc) {
+        const newFileList = doc.querySelector('#fileList');
+        const currentFileList = document.getElementById('fileList');
+        
+        if (newFileList && currentFileList) {
+            currentFileList.innerHTML = newFileList.innerHTML;
+        }
+    }
+
+    function updateImageList(doc) {
+        const newImgList = doc.querySelector('#imgList');
+        const currentImgList = document.getElementById('imgList');
+        
+        if (newImgList && currentImgList) {
+            currentImgList.innerHTML = newImgList.innerHTML;
+            
+            // 重新绑定图片删除按钮的事件监听器
+            setTimeout(() => {
+                document.querySelectorAll('.image-delete-btn').forEach(btn => {
+                    btn.addEventListener('click', function(e) {
+                        e.stopPropagation(); // 阻止事件冒泡
+                        const filename = this.getAttribute('data-filename');
+                        if (filename) {
+                            const actualFilename = filename.replace('tFile/', '');
+                            deleteFile(actualFilename);
+                        }
+                    });
+                });
+            }, 100);
+        }
+    }
+
+    function showMessage(message, type) {
+        // 创建消息提示元素
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${type}`;
+        messageDiv.textContent = message;
+        messageDiv.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 4px;
+            color: white;
+            font-weight: bold;
+            z-index: 1000;
+            font-family: inherit;
+            border: 1px solid;
+            animation: slideIn 0.3s ease;
+        `;
+        
+        if (type === 'success') {
+            messageDiv.style.background = '#000';
+            messageDiv.style.borderColor = '#00ff00';
+            messageDiv.style.color = '#00ff00';
+        } else if (type === 'error') {
+            messageDiv.style.background = '#000';
+            messageDiv.style.borderColor = '#ff0000';
+            messageDiv.style.color = '#ff0000';
+        }
+        
+        document.body.appendChild(messageDiv);
+        
+        // 3秒后自动移除
+        setTimeout(() => {
+            messageDiv.style.animation = 'slideOut 0.3s ease';
+            setTimeout(() => {
+                if (messageDiv.parentNode) {
+                    messageDiv.parentNode.removeChild(messageDiv);
+                }
+            }, 300);
+        }, 3000);
+    }
+
+    // 添加键盘快捷键支持
+    document.addEventListener('keydown', function(e) {
+        // Ctrl+Enter 提交文本
+        if (e.ctrlKey && e.key === 'Enter') {
+            e.preventDefault();
+            submitText();
+        }
+        
+        // F5 获取数据
+        if (e.key === 'F5') {
+            e.preventDefault();
+            fetchData();
+        }
+    });
+
+    // 图片模态框相关函数
+    let currentModalImage = null;
+
+    function openImageModal(imageSrc) {
+        const modal = document.getElementById('imageModal');
+        const modalImage = document.getElementById('modalImage');
+        
+        currentModalImage = imageSrc;
+        modalImage.src = imageSrc;
+        modal.style.display = 'block';
+        
+        // 阻止背景滚动
+        document.body.style.overflow = 'hidden';
+        
+        // 添加键盘事件监听
+        document.addEventListener('keydown', handleModalKeydown);
+    }
+
+    function closeImageModal() {
+        const modal = document.getElementById('imageModal');
+        modal.style.display = 'none';
+        
+        // 恢复背景滚动
+        document.body.style.overflow = 'auto';
+        
+        // 移除键盘事件监听
+        document.removeEventListener('keydown', handleModalKeydown);
+        
+        currentModalImage = null;
+    }
+
+    function handleModalKeydown(e) {
+        if (e.key === 'Escape') {
+            closeImageModal();
+        }
+    }
+
+    function downloadImage() {
+        if (currentModalImage) {
+            const link = document.createElement('a');
+            link.href = currentModalImage;
+            link.download = currentModalImage.split('/').pop();
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    }
+
+    function deleteCurrentImage() {
+        if (currentModalImage) {
+            const filename = currentModalImage.replace('tFile/', '');
+            closeImageModal();
+            deleteFile(filename);
+        }
+    }
+
+        // 检查是否是图片文件
+        const isImage = isImageFile(fileName);
+        
+        if (isImage) {
+            // 从图片列表中移除
+            const imageItems = document.querySelectorAll('.image-item');
+            imageItems.forEach(item => {
+                const img = item.querySelector('.image');
+                if (img && img.src.includes(fileName)) {
+                    // 添加淡出动画
+                    item.style.transition = 'all 0.3s ease';
+                    item.style.opacity = '0';
+                    item.style.transform = 'scale(0.8)';
+                    
+                    setTimeout(() => {
+                        item.remove();
+                    }, 300);
+                }
+            });
+        } else {
+            // 从文件列表中移除
+            const fileItems = document.querySelectorAll('.file-item');
+            fileItems.forEach(item => {
+                const link = item.querySelector('.file-link');
+                if (link && link.textContent === fileName) {
+                    // 添加淡出动画
+                    item.style.transition = 'all 0.3s ease';
+                    item.style.opacity = '0';
+                    item.style.transform = 'translateX(-20px)';
+                    
+                    setTimeout(() => {
+                        item.remove();
+                    }, 300);
+                }
+            });
+        }
+    }
 </script>

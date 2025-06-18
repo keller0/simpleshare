@@ -54,7 +54,8 @@ func setRouter(r *gin.Engine) {
 
 	tempHtml := template.Must(template.New("").ParseFS(webDir, "web/*.html"))
 	r.SetHTMLTemplate(tempHtml)
-
+	// r.LoadHTMLGlob("web/*.html")
+	// r.Static("/static", "./static")
 	r.StaticFS("/static", http.FS(webDir))
 	r.GET("/", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "index.html", gin.H{"data": sData, "imgList": imgList, "fileList": fileList})
@@ -65,7 +66,8 @@ func setRouter(r *gin.Engine) {
 		c.HTML(http.StatusOK, "index.html", gin.H{"data": sData, "imgList": imgList, "fileList": fileList})
 	})
 
-	r.POST("/clearFile", func(c *gin.Context) {
+	r.POST("/clearAll", func(c *gin.Context) {
+		sData = ""
 		clearTmpFile()
 		fileList = nil
 		imgList = nil
@@ -73,6 +75,7 @@ func setRouter(r *gin.Engine) {
 	})
 
 	r.POST("/deleteFile", func(c *gin.Context) {
+		sData = ""
 		fileName := c.PostForm("fileName")
 		if fileName == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "fileName is required"})
@@ -173,7 +176,7 @@ func clearTmpFile() {
 }
 
 func isImgSimple(name string) bool {
-	if filepath.Ext(name) == ".jpg" || filepath.Ext(name) == ".png" || filepath.Ext(name) == ".jpeg" {
+	if filepath.Ext(name) == ".jpg" || filepath.Ext(name) == ".png" || filepath.Ext(name) == ".jpeg" || filepath.Ext(name) == ".webp" {
 		return true
 	}
 	return false
