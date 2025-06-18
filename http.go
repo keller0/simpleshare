@@ -72,6 +72,44 @@ func setRouter(r *gin.Engine) {
 		c.HTML(http.StatusOK, "index.html", gin.H{"data": sData, "imgList": imgList, "fileList": fileList})
 	})
 
+	r.POST("/deleteFile", func(c *gin.Context) {
+		fileName := c.PostForm("fileName")
+		if fileName == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "fileName is required"})
+			return
+		}
+
+		// 删除文件
+		filePath := filepath.Join(tmpFileDir, fileName)
+		err := os.Remove(filePath)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete file: " + err.Error()})
+			return
+		}
+
+		// 从列表中移除
+		fileUrl := "tFile/" + fileName
+		if isImgSimple(fileName) {
+			// 从图片列表中移除
+			for i, img := range imgList {
+				if img == fileUrl {
+					imgList = append(imgList[:i], imgList[i+1:]...)
+					break
+				}
+			}
+		} else {
+			// 从文件列表中移除
+			for i, file := range fileList {
+				if file.N == fileUrl {
+					fileList = append(fileList[:i], fileList[i+1:]...)
+					break
+				}
+			}
+		}
+
+		c.JSON(http.StatusOK, gin.H{"success": true, "message": "File deleted successfully"})
+	})
+
 	r.POST("/upload", func(c *gin.Context) {
 		// Single file
 		file, err := c.FormFile("file")

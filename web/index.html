@@ -25,21 +25,35 @@
         <div style="padding: 28px;">
             <input type="submit" value="Submit" form="dForm"  style="background: azure;">
             <button onclick="location.href = '/';" style="margin-left: 30px;background: gray;">Refresh</button>
-            <button type="submit" form="cForm"  style="margin-left: 30px;background: #d25a5a;">DeleteFiles</button>
+            <button onclick="confirmDeleteAllFiles()" style="margin-left: 30px;background: #d25a5a;">DeleteFiles</button>
         </div>
-        <div class="progress-bar">
-            <div id="progressName"></div>
-            <div id="progress"></div>
-          </div>
+        
+        <!-- 上传进度区域 -->
+        <div id="uploadProgress" class="upload-progress-container" style="display: none;">
+            <div class="progress-header">
+                <span id="progressTitle">Uploading files...</span>
+            </div>
+            <div id="progressList"></div>
+        </div>
+
+        <!-- 文件列表 -->
         <div style="margin: 10px auto auto; width: 90%" id="fileList">
             {{ range .fileList }}
-            <a style="margin-right: 10px;" href="{{.N}}">{{.Ns}}</a>
+            <div class="file-item">
+                <a href="{{.N}}" class="file-link">{{.Ns}}</a>
+                <button onclick="deleteFile('{{.Ns}}')" class="delete-btn" title="Delete file">🗑️</button>
+            </div>
             {{ end }}
         </div>
         <br>
-        <div id="imgList">
+        
+        <!-- 图片列表 -->
+        <div id="imgList" class="img-list">
             {{ range .imgList }}
-            <img style="width: 300px; padding: 5px" src="{{ . }}" alt="">
+            <div class="img-item">
+                <img src="{{ . }}" alt="">
+                <button class="delete-btn img-delete-btn" title="Delete image" data-filename="{{ . }}">🗑️</button>
+            </div>
             {{ end }}
         </div>
     </div>
@@ -51,11 +65,15 @@
         border-bottom: 1px #cfc4c4 solid;
         min-height: 100vh;
         overflow: auto;
+        font-family: Arial, sans-serif;
     }
     textarea {
         /* will prevent resizing horizontally */
         max-width: 95%;
         resize:vertical;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 8px;
     }
     .progress-bar {
         width: 90%;
@@ -74,6 +92,10 @@
     @media screen and (max-width: 768px) {
         #div-mobile { display: block; }
         #div-desktop { display: none; }
+        
+        .img-item img {
+            width: 250px;
+        }
     }
     .up-box{
         margin: 5px;
@@ -90,87 +112,491 @@
         text-align: left;
     }
 
+    /* 上传进度样式 */
+    .upload-progress-container {
+        width: 90%;
+        margin: 20px auto;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        background: #f9f9f9;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .progress-header {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 10px 15px;
+        background: #e9ecef;
+        border-radius: 8px 8px 0 0;
+        border-bottom: 1px solid #ddd;
+    }
+    
+    .close-btn {
+        background: none;
+        border: none;
+        font-size: 20px;
+        cursor: pointer;
+        color: #666;
+    }
+    
+    .close-btn:hover {
+        color: #333;
+    }
+    
+    .progress-item {
+        padding: 10px 15px;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .progress-item:last-child {
+        border-bottom: none;
+    }
+    
+    .progress-bar {
+        width: 100%;
+        height: 8px;
+        background-color: #e9ecef;
+        border-radius: 4px;
+        overflow: hidden;
+        margin-top: 5px;
+    }
+    
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #4CAF50, #45a049);
+        width: 0%;
+        transition: width 0.3s ease;
+    }
+    
+    .progress-info {
+        display: flex;
+        justify-content: space-between;
+        font-size: 12px;
+        color: #666;
+        margin-top: 5px;
+    }
+    
+    /* 文件项样式 */
+    .file-item {
+        display: inline-flex;
+        align-items: center;
+        margin: 5px 10px 5px 0;
+        padding: 5px 10px;
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+    }
+    
+    .file-item:hover {
+        background: #e9ecef;
+        border-color: #adb5bd;
+    }
+    
+    .file-link {
+        text-decoration: none;
+        color: #007bff;
+        margin-right: 8px;
+    }
+    
+    .file-link:hover {
+        text-decoration: underline;
+    }
+    
+    .delete-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 14px;
+        padding: 2px 4px;
+        border-radius: 3px;
+        transition: background-color 0.2s ease;
+    }
+    
+    .delete-btn:hover {
+        background-color: #ffebee;
+    }
+    
+    /* 图片项样式 */
+    .img-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        justify-content: center;
+    }
+    
+    .img-item {
+        position: relative;
+        display: inline-block;
+    }
+    
+    .img-item img {
+        width: 300px;
+        padding: 5px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        transition: transform 0.2s ease;
+    }
+    
+    .img-item:hover img {
+        transform: scale(1.02);
+    }
+    
+    .img-delete-btn {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid #ddd;
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+    }
+    
+    .img-item:hover .img-delete-btn {
+        opacity: 1;
+    }
+    
+    /* 状态指示器 */
+    .status-indicator {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 8px;
+    }
+    
+    .status-uploading {
+        background: #ffc107;
+        animation: pulse 1s infinite;
+    }
+    
+    .status-success {
+        background: #28a745;
+    }
+    
+    .status-error {
+        background: #dc3545;
+    }
+    
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
+    }
+    
+    /* 取消按钮样式 */
+    .cancel-btn {
+        background: #dc3545;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+        font-size: 12px;
+        margin-left: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background-color 0.2s ease;
+    }
+    
+    .cancel-btn:hover {
+        background: #c82333;
+    }
+    
+    .status-cancelled {
+        background: #6c757d;
+    }
 </style>
 <script>
+    let uploadRequests = new Map(); // 存储所有上传请求
+
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    function showProgress() {
+        document.getElementById('uploadProgress').style.display = 'block';
+    }
+
+    function hideProgress() {
+        document.getElementById('uploadProgress').style.display = 'none';
+        document.getElementById('progressList').innerHTML = '';
+    }
+
+    // 添加自动隐藏功能
+    function autoHideProgress() {
+        setTimeout(() => {
+            const progressList = document.getElementById('progressList');
+            if (progressList.children.length === 0) {
+                hideProgress();
+            }
+        }, 2000);
+    }
+
+    function createProgressItem(fileName, fileSize) {
+        const progressId = 'progress-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+        
+        const progressItem = document.createElement('div');
+        progressItem.className = 'progress-item';
+        progressItem.id = progressId;
+        progressItem.innerHTML = `
+            <div style="display: flex; align-items: center; margin-bottom: 5px;">
+                <span class="status-indicator status-uploading"></span>
+                <span style="flex: 1;">${fileName}</span>
+                <span style="color: #666; font-size: 12px;">${formatFileSize(fileSize)}</span>
+                <button onclick="cancelUpload('${progressId}', '${fileName}')" class="cancel-btn" title="Cancel upload">✕</button>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="fill-${progressId}"></div>
+            </div>
+            <div class="progress-info">
+                <span id="status-${progressId}">Uploading...</span>
+                <span id="percent-${progressId}">0%</span>
+            </div>
+        `;
+        
+        document.getElementById('progressList').appendChild(progressItem);
+        return progressId;
+    }
+
+    function cancelUpload(progressId, fileName) {
+        if (!confirm(`Are you sure you want to cancel uploading "${fileName}"?`)) {
+            return;
+        }
+
+        // 取消特定的 XHR 请求
+        const xhr = uploadRequests.get(progressId);
+        if (xhr) {
+            xhr.abort();
+            uploadRequests.delete(progressId);
+        }
+        
+        // 更新进度条状态
+        updateProgress(progressId, 0, 'Cancelled');
+        
+        // 2秒后移除进度项
+        setTimeout(() => {
+            const progressItem = document.getElementById(progressId);
+            if (progressItem) {
+                progressItem.remove();
+            }
+            
+            // 如果没有更多进度项，隐藏进度区域
+            const progressList = document.getElementById('progressList');
+            if (progressList.children.length === 0) {
+                hideProgress();
+            }
+        }, 2000);
+    }
+
+    function updateProgress(progressId, percent, status) {
+        const fillElement = document.getElementById(`fill-${progressId}`);
+        const statusElement = document.getElementById(`status-${progressId}`);
+        const percentElement = document.getElementById(`percent-${progressId}`);
+        const indicatorElement = fillElement.parentElement.parentElement.querySelector('.status-indicator');
+        
+        if (fillElement) fillElement.style.width = percent + '%';
+        if (percentElement) percentElement.textContent = Math.round(percent) + '%';
+        if (statusElement) statusElement.textContent = status;
+        
+        if (status === 'Completed') {
+            indicatorElement.className = 'status-indicator status-success';
+        } else if (status === 'Error') {
+            indicatorElement.className = 'status-indicator status-error';
+        } else if (status === 'Cancelled') {
+            indicatorElement.className = 'status-indicator status-cancelled';
+        }
+    }
+
+    function deleteFile(fileName) {
+        if (!confirm(`Are you sure you want to delete "${fileName}"?`)) {
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('fileName', fileName);
+
+        fetch('/deleteFile', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 刷新页面以更新文件列表
+                location.reload();
+            } else {
+                alert('Error deleting file: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error deleting file. Please try again.');
+        });
+    }
+
+    function confirmDeleteAllFiles() {
+        if (confirm('Are you sure you want to delete ALL files? This action cannot be undone.')) {
+            document.getElementById('cForm').submit();
+        }
+    }
 
     function dropHandler(ev){
         console.log('File(s) dropped');
-
-        // Prevent default behavior (Prevent file from being opened)
         ev.preventDefault();
 
         if (ev.dataTransfer.items) {
-            // Use DataTransferItemList interface to access the file(s)
             for (let i = 0; i < ev.dataTransfer.items.length; i++) {
-                // If dropped items aren't files, reject them
                 if (ev.dataTransfer.items[i].kind === 'file') {
                     let file = ev.dataTransfer.items[i].getAsFile();
                     console.log('... file[' + i + '].name = ' + file.name);
-                    console.log(file)
-
-                    uploadFile(file)
-                   
+                    uploadFile(file);
                 }
             }
         } else {
-            // Use DataTransfer interface to access the file(s)
             for (let i = 0; i < ev.dataTransfer.files.length; i++) {
                 console.log('... file[' + i + '].name = ' + ev.dataTransfer.files[i].name);
+                uploadFile(ev.dataTransfer.files[i]);
             }
         }
     }
 
     function handleSelectFilesChange(input) {
         console.log(input.files);
-        // return
         for(let i = 0; i < input.files.length; i++) {
-                let file = input.files[i];
-                uploadFile(file)
-            }
-        
+            let file = input.files[i];
+            uploadFile(file);
+        }
+        // 清空input，允许重复选择同一文件
+        input.value = '';
     }
 
     function uploadFile(file) {
-
-        const progressBar = document.getElementById('progress');
-        const progressName = document.getElementById('progressName');
+        showProgress();
+        const progressId = createProgressItem(file.name, file.size);
 
         const formData = new FormData();
         formData.append('file', file);
         formData.append("isImg", isFileImage(file)?"1":"0");
+        
         const xhr = new XMLHttpRequest();
+        uploadRequests.set(progressId, xhr); // 存储请求引用
         xhr.open('POST', '/upload', true);
+        
         xhr.upload.onprogress = e => {
-            progressName.innerText = file.name + "⏫";
             if (e.lengthComputable) {
-            const percentComplete = (e.loaded / e.total) * 100;
-            progressBar.style.width = `${percentComplete}%`;
+                const percentComplete = (e.loaded / e.total) * 100;
+                updateProgress(progressId, percentComplete, 'Uploading...');
             }
         };
+        
         xhr.onload = function(e) {
-            console.log(e)
+            uploadRequests.delete(progressId); // 清理请求引用
+            console.log(e);
             if (xhr.status === 200) {
-                // alert("Upload successful!");
-                progressName.innerText = file.name + "✅";
-                if (isFileImage(file))
-                {
-                    let elem = document.createElement("img");
-                    elem.src = e.currentTarget.response;
-                    elem.style.width = "300px";
-                    elem.style.padding = "5px";
-                    let list = document.getElementById("imgList");
-                    list.insertBefore(elem, list.firstChild);
-                } else {
-                    let elem = document.createElement("a");
-                    elem.href = e.currentTarget.response;
-                    elem.style = "margin-right: 10px;"
-                    elem.text = file.name;
-                    let list = document.getElementById("fileList");
-                    list.append(elem, list.firstChild);
-                }
+                updateProgress(progressId, 100, 'Completed');
+                
+                // 延迟添加文件到列表，让用户看到完成状态
+                setTimeout(() => {
+                    if (isFileImage(file)) {
+                        let imgContainer = document.createElement("div");
+                        imgContainer.className = "img-item";
+                        imgContainer.innerHTML = `
+                            <img src="${e.currentTarget.response}" alt="">
+                            <button onclick="deleteFile('${file.name}')" class="delete-btn img-delete-btn" title="Delete image" data-filename="${file.name}">🗑️</button>
+                        `;
+                        let list = document.getElementById("imgList");
+                        list.insertBefore(imgContainer, list.firstChild);
+                    } else {
+                        let fileContainer = document.createElement("div");
+                        fileContainer.className = "file-item";
+                        fileContainer.innerHTML = `
+                            <a href="${e.currentTarget.response}" class="file-link">${file.name}</a>
+                            <button onclick="deleteFile('${file.name}')" class="delete-btn" title="Delete file">🗑️</button>
+                        `;
+                        let list = document.getElementById("fileList");
+                        list.insertBefore(fileContainer, list.firstChild);
+                    }
+                    
+                    // 移除进度项
+                    const progressItem = document.getElementById(progressId);
+                    if (progressItem) {
+                        progressItem.remove();
+                    }
+                    
+                    // 检查是否还有其他进度项，如果没有则2秒后自动隐藏
+                    const progressList = document.getElementById('progressList');
+                    if (progressList.children.length === 0) {
+                        autoHideProgress();
+                    }
+                }, 1000);
             } else {
-                alert("Error uploading files. Please try again.");
+                updateProgress(progressId, 0, 'Error');
+                alert("Error uploading file: " + file.name + ". Please try again.");
+                
+                // 错误情况下也移除进度项并检查自动隐藏
+                setTimeout(() => {
+                    const progressItem = document.getElementById(progressId);
+                    if (progressItem) {
+                        progressItem.remove();
+                    }
+                    
+                    const progressList = document.getElementById('progressList');
+                    if (progressList.children.length === 0) {
+                        autoHideProgress();
+                    }
+                }, 3000); // 错误情况下3秒后移除
             }
+        };
+
+        xhr.onerror = function() {
+            uploadRequests.delete(progressId);
+            updateProgress(progressId, 0, 'Error');
+            alert("Network error uploading file: " + file.name + ". Please try again.");
+            
+            // 错误情况下也移除进度项并检查自动隐藏
+            setTimeout(() => {
+                const progressItem = document.getElementById(progressId);
+                if (progressItem) {
+                    progressItem.remove();
+                }
+                
+                const progressList = document.getElementById('progressList');
+                if (progressList.children.length === 0) {
+                    autoHideProgress();
+                }
+            }, 3000); // 错误情况下3秒后移除
+        };
+
+        xhr.onabort = function() {
+            uploadRequests.delete(progressId);
+            updateProgress(progressId, 0, 'Cancelled');
+            
+            setTimeout(() => {
+                const progressItem = document.getElementById(progressId);
+                if (progressItem) {
+                    progressItem.remove();
+                }
+                
+                // 如果没有更多进度项，隐藏进度区域
+                const progressList = document.getElementById('progressList');
+                if (progressList.children.length === 0) {
+                    hideProgress();
+                }
+            }, 2000);
         };
 
         xhr.send(formData);
@@ -182,8 +608,21 @@
 
     function dragOverHandler(ev) {
         console.log('File(s) in drop zone');
-
-        // Prevent default behavior (Prevent file from being opened)
         ev.preventDefault();
     }
+
+    // 添加事件监听器处理图片删除按钮
+    document.addEventListener('DOMContentLoaded', function() {
+        // 为现有的图片删除按钮添加事件监听器
+        document.querySelectorAll('.img-delete-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const filename = this.getAttribute('data-filename');
+                if (filename) {
+                    // 从 "tFile/filename" 中提取 filename
+                    const actualFilename = filename.replace('tFile/', '');
+                    deleteFile(actualFilename);
+                }
+            });
+        });
+    });
 </script>
