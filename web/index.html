@@ -80,7 +80,7 @@
                     {{ range .imgList }}
                     <div class="image-item">
                         <img src="{{ . }}" alt="" class="image" onclick="openImageModal('{{ . }}')">
-                        <button class="delete-btn image-delete-btn" title="Delete image" data-filename="{{ . }}">×</button>
+                        <button class="image-delete-btn" title="Delete image" data-filename="{{ . }}">×</button>
                     </div>
                     {{ end }}
                 </div>
@@ -479,6 +479,26 @@
         transform: scale(1.05);
     }
 
+        /* 删除按钮样式 */
+        .delete-btn {
+        background: none;
+        border: none;
+        color: #ff0000;
+        cursor: pointer;
+        font-size: 16px;
+        padding: 2px;
+        border-radius: 2px;
+        transition: background-color 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .delete-btn:hover {
+        background: rgba(255, 0, 0, 0.2);
+    }
+
+
     /* 删除按钮移到右上角 */
     .image-delete-btn {
         position: absolute;
@@ -618,6 +638,23 @@
             transform: translateY(0);
             opacity: 1;
         }
+    }
+
+    @keyframes slideOut {
+        from {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateY(-50px);
+            opacity: 0;
+        }
+    }
+
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
     }
 
     /* 响应式设计 */
@@ -808,16 +845,64 @@
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // 刷新页面以更新文件列表
-                location.reload();
+                // 只移除对应的DOM元素，不刷新页面
+                removeFileFromDOM(fileName);
+                showMessage('File deleted successfully!', 'success');
             } else {
-                alert('Error deleting file: ' + (data.error || 'Unknown error'));
+                showMessage('Error deleting file: ' + (data.error || 'Unknown error'), 'error');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Error deleting file. Please try again.');
+            showMessage('Error deleting file. Please try again.', 'error');
         });
+    }
+
+    // 添加缺失的函数：从DOM中移除文件
+    function removeFileFromDOM(fileName) {
+        // 检查是否是图片文件
+        const isImage = isImageFile(fileName);
+        
+        if (isImage) {
+            // 从图片列表中移除
+            const imageItems = document.querySelectorAll('.image-item');
+            imageItems.forEach(item => {
+                const img = item.querySelector('.image');
+                if (img && img.src.includes(fileName)) {
+                    // 添加淡出动画
+                    item.style.transition = 'all 0.3s ease';
+                    item.style.opacity = '0';
+                    item.style.transform = 'scale(0.8)';
+                    
+                    setTimeout(() => {
+                        item.remove();
+                    }, 300);
+                }
+            });
+        } else {
+            // 从文件列表中移除
+            const fileItems = document.querySelectorAll('.file-item');
+            fileItems.forEach(item => {
+                const link = item.querySelector('.file-link');
+                if (link && link.textContent === fileName) {
+                    // 添加淡出动画
+                    item.style.transition = 'all 0.3s ease';
+                    item.style.opacity = '0';
+                    item.style.transform = 'translateX(-20px)';
+                    
+                    setTimeout(() => {
+                        item.remove();
+                    }, 300);
+                }
+            });
+        }
+    }
+
+    // 添加缺失的函数：检查文件是否为图片
+    function isImageFile(fileName) {
+        const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.svg'];
+        const extension = fileName.toLowerCase().substring(fileName.lastIndexOf('.'));
+        return imageExtensions.includes(extension);
     }
 
     function confirmDeleteAllFiles() {
@@ -841,9 +926,8 @@
             clearBtn.disabled = false;
             
             if (xhr.status === 200) {
-                // 清空文件列表和图片列表
-                clearFileLists();
-                showMessage('All files cleared successfully!', 'success');
+                // 接口调用成功，直接刷新页面
+                location.reload();
             } else {
                 showMessage('Error clearing files. Please try again.', 'error');
             }
@@ -865,20 +949,6 @@
         xhr.timeout = 10000; // 10秒
 
         xhr.send();
-    }
-
-    function clearFileLists() {
-        // 清空文件列表
-        const fileList = document.getElementById('fileList');
-        if (fileList) {
-            fileList.innerHTML = '';
-        }
-
-        // 清空图片列表
-        const imgList = document.getElementById('imgList');
-        if (imgList) {
-            imgList.innerHTML = '';
-        }
     }
 
     function dropHandler(ev){
@@ -942,7 +1012,7 @@
                         imgContainer.className = "image-item";
                         imgContainer.innerHTML = `
                             <img src="${e.currentTarget.response}" alt="" class="image" onclick="openImageModal('${e.currentTarget.response}')">
-                            <button class="delete-btn image-delete-btn" title="Delete image" data-filename="${file.name}">×</button>
+                            <button class="image-delete-btn" title="Delete image" data-filename="${file.name}">×</button>
                         `;
                         let list = document.getElementById("imgList");
                         list.insertBefore(imgContainer, list.firstChild);
@@ -1264,44 +1334,6 @@
             const filename = currentModalImage.replace('tFile/', '');
             closeImageModal();
             deleteFile(filename);
-        }
-    }
-
-        // 检查是否是图片文件
-        const isImage = isImageFile(fileName);
-        
-        if (isImage) {
-            // 从图片列表中移除
-            const imageItems = document.querySelectorAll('.image-item');
-            imageItems.forEach(item => {
-                const img = item.querySelector('.image');
-                if (img && img.src.includes(fileName)) {
-                    // 添加淡出动画
-                    item.style.transition = 'all 0.3s ease';
-                    item.style.opacity = '0';
-                    item.style.transform = 'scale(0.8)';
-                    
-                    setTimeout(() => {
-                        item.remove();
-                    }, 300);
-                }
-            });
-        } else {
-            // 从文件列表中移除
-            const fileItems = document.querySelectorAll('.file-item');
-            fileItems.forEach(item => {
-                const link = item.querySelector('.file-link');
-                if (link && link.textContent === fileName) {
-                    // 添加淡出动画
-                    item.style.transition = 'all 0.3s ease';
-                    item.style.opacity = '0';
-                    item.style.transform = 'translateX(-20px)';
-                    
-                    setTimeout(() => {
-                        item.remove();
-                    }, 300);
-                }
-            });
         }
     }
 </script>

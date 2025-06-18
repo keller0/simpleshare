@@ -54,7 +54,7 @@ func setRouter(r *gin.Engine) {
 
 	tempHtml := template.Must(template.New("").ParseFS(webDir, "web/*.html"))
 	r.SetHTMLTemplate(tempHtml)
-	// r.LoadHTMLGlob("web/*.html")
+	r.LoadHTMLGlob("web/*.html")
 	// r.Static("/static", "./static")
 	r.StaticFS("/static", http.FS(webDir))
 	r.GET("/", func(c *gin.Context) {
