@@ -32,12 +32,12 @@
                 
                 <!-- 操作按钮 -->
                 <div class="action-buttons">
-                    <button onclick="submitText()" class="btn btn-primary">Submit</button>
-                    <button onclick="confirmDeleteAllFiles()" class="btn btn-danger">Clear All</button>
+                    <button onclick="submitText()" class="btn btn-primary" style="font-weight: bold;">Submit</button>
+                    <button onclick="confirmDeleteAllFiles()" class="btn btn-danger" style="font-weight: bold;">Clear All</button>
                 </div>
                 
                 <!-- 文件上传区域 -->
-                <div class="upload-section">
+                <div class="upload-section mobile-only">
                     <label class="section-label">Upload Files</label>
                     <div class="file-input-wrapper">
                         <input type="file" id="upLoadOneFile" multiple onchange="handleSelectFilesChange(this)" class="file-input">
@@ -214,6 +214,17 @@
     /* 文件上传区域 */
     .upload-section {
         margin: 20px 0;
+    }
+
+    /* 移动端显示，桌面端隐藏 */
+    .mobile-only {
+        display: none;
+    }
+
+    @media (max-width: 768px) {
+        .mobile-only {
+            display: block;
+        }
     }
 
     .file-input-wrapper {
