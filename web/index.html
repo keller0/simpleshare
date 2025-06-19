@@ -13,27 +13,26 @@
         <!-- 标题区域 -->
         <header class="header">
             <h1 class="title">simple share</h1>
-            <p class="subtitle">Share texts and files in your local network</p>
+            <p class="subtitle"><span style="background-color: #00ff00; color: #000;">Share texts and files in your local network</span>
+                </p>
         </header>
 
         <!-- 主要内容区域 -->
         <main class="main-content">
             <!-- 显示区域 -->
-            <section class="display-section">
-                <label class="section-label">Shared Content</label>
-                <textarea id="showDataArea" class="display-area" readonly>{{ .data }}</textarea>
-            </section>
-
             <!-- 输入区域 -->
             <section class="input-section">
+
+                <label class="section-label">Shared Content</label>
+                <textarea id="showDataArea" class="display-area" readonly>{{ .data }}</textarea>
+    
                 <label class="section-label">Input Text</label>
                 <textarea name="sData" id="inputDataArea" class="input-area" 
                           placeholder="Input text and submit or drop files on the page"></textarea>
                 
-                           <!-- 操作按钮 -->
+                <!-- 操作按钮 -->
                 <div class="action-buttons">
                     <button onclick="submitText()" class="btn btn-primary">Submit</button>
-                    <button onclick="fetchData()" class="btn btn-secondary">Fetch</button>
                     <button onclick="confirmDeleteAllFiles()" class="btn btn-danger">Clear All</button>
                 </div>
                 
@@ -62,7 +61,7 @@
 
             <!-- 文件列表 -->
             <section class="files-section">
-                <label class="section-label">Files</label>
+                <label class="section-label">Shared Files</label>
                 <div id="fileList" class="file-list">
                     {{ range .fileList }}
                     <div class="file-item">
@@ -71,11 +70,6 @@
                     </div>
                     {{ end }}
                 </div>
-            </section>
-
-            <!-- 图片列表 -->
-            <section class="images-section">
-                <label class="section-label">Images</label>
                 <div id="imgList" class="image-list">
                     {{ range .imgList }}
                     <div class="image-item">
@@ -85,6 +79,12 @@
                     {{ end }}
                 </div>
             </section>
+
+            <!-- 图片列表 -->
+            <!-- <section class="images-section">
+                <label class="section-label">Images</label>
+               
+            </section> -->
 
             <!-- 图片模态框 -->
             <div id="imageModal" class="image-modal" onclick="closeImageModal()">
@@ -135,17 +135,16 @@
     /* 标题区域 */
     .header {
         text-align: center;
-        margin-bottom: 40px;
-        padding: 20px 0;
-        border-bottom: 1px solid #333;
+        margin-bottom: 10px;
+        padding-top: 30px;
+        /* border-bottom: 1px solid #333; */
     }
 
     .title {
         font-size: 2.5rem;
         font-weight: bold;
         color: #00ff00;
-        text-shadow: 0 0 10px #00ff00;
-        margin-bottom: 10px;
+        /* margin-bottom: 10px; */
         letter-spacing: 2px;
         text-align: left;
     }
@@ -449,6 +448,7 @@
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
         gap: 15px;
+        margin-top: 10px;
     }
 
     .image-item {
@@ -868,7 +868,7 @@
             const imageItems = document.querySelectorAll('.image-item');
             imageItems.forEach(item => {
                 const img = item.querySelector('.image');
-                if (img && img.src.includes(fileName)) {
+                if (img && matchesFileName(img.src, fileName)) {
                     // 添加淡出动画
                     item.style.transition = 'all 0.3s ease';
                     item.style.opacity = '0';
@@ -896,6 +896,15 @@
                 }
             });
         }
+    }
+
+    // 辅助函数：匹配文件名，处理空格编码问题
+    function matchesFileName(src, fileName) {
+        // 从 src 中提取文件名部分（去掉 tFile/ 前缀）
+        const srcFileName = src.split('/').pop();
+        // 解码 URL 编码的文件名
+        const decodedSrcFileName = decodeURIComponent(srcFileName);
+        return decodedSrcFileName === fileName;
     }
 
     // 添加缺失的函数：检查文件是否为图片
@@ -1139,25 +1148,30 @@
         const formData = new FormData();
         formData.append('sData', textData);
 
-        fetch('/', {
+        fetch('/submit', {
             method: 'POST',
             body: formData
         })
-        .then(response => response.text())
-        .then(html => {
-            // 解析返回的HTML并更新显示区域
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(html, 'text/html');
-            
-            // 更新显示区域的文本
-            const newData = doc.querySelector('#showDataArea').textContent;
-            document.getElementById('showDataArea').value = newData;
-            
-            // 清空输入区域
-            document.getElementById('inputDataArea').value = '';
-            
-            // 显示成功提示
-            showMessage('Text submitted successfully!', 'success');
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 更新显示区域的文本
+                document.getElementById('showDataArea').value = data.data || '';
+                
+                // 清空输入区域
+                document.getElementById('inputDataArea').value = '';
+                
+                // 更新文件列表
+                updateFileListFromData(data.fileList);
+                
+                // 更新图片列表
+                updateImageListFromData(data.imgList);
+                
+                // 显示成功提示
+                showMessage('Text submitted successfully!', 'success');
+            } else {
+                showMessage('Error submitting text. Please try again.', 'error');
+            }
         })
         .catch(error => {
             console.error('Error:', error);
@@ -1165,48 +1179,35 @@
         });
     }
 
-    function fetchData() {
-        fetch('/')
-        .then(response => response.text())
-        .then(html => {
-            // 解析返回的HTML并更新页面内容
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(html, 'text/html');
-            
-            // 更新显示区域的文本
-            const newData = doc.querySelector('#showDataArea').textContent;
-            document.getElementById('showDataArea').value = newData;
-            
-            // 更新文件列表
-            updateFileList(doc);
-            
-            // 更新图片列表
-            updateImageList(doc);
-            
-            // 显示成功提示
-            showMessage('Data fetched successfully!', 'success');
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showMessage('Error fetching data. Please try again.', 'error');
-        });
-    }
-
-    function updateFileList(doc) {
-        const newFileList = doc.querySelector('#fileList');
-        const currentFileList = document.getElementById('fileList');
-        
-        if (newFileList && currentFileList) {
-            currentFileList.innerHTML = newFileList.innerHTML;
+    function updateFileListFromData(fileList) {
+        const fileListElement = document.getElementById('fileList');
+        if (fileListElement && fileList) {
+            let html = '';
+            fileList.forEach(file => {
+                html += `
+                    <div class="file-item">
+                        <a href="${file.n}" class="file-link">${file.ns}</a>
+                        <button onclick="deleteFile('${file.ns}')" class="delete-btn" title="Delete file">×</button>
+                    </div>
+                `;
+            });
+            fileListElement.innerHTML = html;
         }
     }
 
-    function updateImageList(doc) {
-        const newImgList = doc.querySelector('#imgList');
-        const currentImgList = document.getElementById('imgList');
-        
-        if (newImgList && currentImgList) {
-            currentImgList.innerHTML = newImgList.innerHTML;
+    function updateImageListFromData(imgList) {
+        const imgListElement = document.getElementById('imgList');
+        if (imgListElement && imgList) {
+            let html = '';
+            imgList.forEach(img => {
+                html += `
+                    <div class="image-item">
+                        <img src="${img}" alt="" class="image" onclick="openImageModal('${img}')">
+                        <button class="image-delete-btn" title="Delete image" data-filename="${img}">×</button>
+                    </div>
+                `;
+            });
+            imgListElement.innerHTML = html;
             
             // 重新绑定图片删除按钮的事件监听器
             setTimeout(() => {
@@ -1255,7 +1256,7 @@
         
         document.body.appendChild(messageDiv);
         
-        // 3秒后自动移除
+        // 2秒后自动移除
         setTimeout(() => {
             messageDiv.style.animation = 'slideOut 0.3s ease';
             setTimeout(() => {
@@ -1263,7 +1264,7 @@
                     messageDiv.parentNode.removeChild(messageDiv);
                 }
             }, 300);
-        }, 3000);
+        }, 2000);
     }
 
     // 添加键盘快捷键支持
@@ -1272,12 +1273,6 @@
         if (e.ctrlKey && e.key === 'Enter') {
             e.preventDefault();
             submitText();
-        }
-        
-        // F5 获取数据
-        if (e.key === 'F5') {
-            e.preventDefault();
-            fetchData();
         }
     });
 

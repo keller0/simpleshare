@@ -61,9 +61,14 @@ func setRouter(r *gin.Engine) {
 		c.HTML(http.StatusOK, "index.html", gin.H{"data": sData, "imgList": imgList, "fileList": fileList})
 	})
 
-	r.POST("/", func(c *gin.Context) {
+	r.POST("/submit", func(c *gin.Context) {
 		sData = c.PostForm("sData")
-		c.HTML(http.StatusOK, "index.html", gin.H{"data": sData, "imgList": imgList, "fileList": fileList})
+		c.JSON(http.StatusOK, gin.H{
+			"success":  true,
+			"data":     sData,
+			"imgList":  imgList,
+			"fileList": fileList,
+		})
 	})
 
 	r.POST("/clearAll", func(c *gin.Context) {
