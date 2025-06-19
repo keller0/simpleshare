@@ -30,7 +30,7 @@ var rootCmd = &cobra.Command{
 built in Go.
   source: https://github.com/keller0/simpleshare`,
 	CompletionOptions: cobra.CompletionOptions{HiddenDefaultCmd: true},
-	Version:           "0.0.2",
+	Version:           "0.0.3",
 	Example:           "./simpleshare  -a 127.0.0.1 -p 7777 -f tmpFile",
 	Run: func(cmd *cobra.Command, args []string) {
 		tDir := filepath.Join(".", tmpFileDir)
