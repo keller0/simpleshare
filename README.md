@@ -4,6 +4,10 @@
 
  **⚠️ THERE IS NO SECURITY ASSURANCE, PLEASE USE WITH CAUTION.**
 
+### Web UI
+
+![ui](https://github.com/user-attachments/assets/d5c38118-e255-4d5d-a8eb-8dcd6bd3ead0)
+
 ### Build and run
 
 ```
@@ -28,11 +32,3 @@ Flags:
   -p, --port string      listen port (default "7777")
   -v, --version          version for simpleshare
 ```
-
-### Web UI
-
-![ui](https://user-images.githubusercontent.com/19371712/170302601-6d591f06-1ae8-4578-8886-8059401b5715.png)
-
-### Demonstration
-
-https://user-images.githubusercontent.com/19371712/165465190-d917bf54-8dc1-41de-b855-53e834561494.mp4
