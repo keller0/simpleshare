@@ -24,11 +24,11 @@
             <section class="input-section">
 
                 <label class="section-label">Shared Content</label>
-                <textarea id="showDataArea" class="display-area" readonly>{{ .data }}</textarea>
+                <textarea id="showDataArea" class="display-area" placeholder="Shared content will be displayed here" rows="12" readonly>{{ .data }}</textarea>
     
                 <label class="section-label">Input Text</label>
                 <textarea name="sData" id="inputDataArea" class="input-area" 
-                          placeholder="Input text and submit or drop files on the page"></textarea>
+                          placeholder="Input text and submit or drop files on the page" rows="6"></textarea>
                 
                 <!-- 操作按钮 -->
                 <div class="action-buttons">
@@ -127,7 +127,7 @@
 
     /* 容器 */
     .container {
-        max-width: 1200px;
+        max-width: 800px;
         margin: 0 auto;
         padding: 20px;
     }
@@ -211,6 +211,27 @@
         box-shadow: 0 0 5px rgba(0, 255, 0, 0.3);
     }
 
+    /* 修改placeholder颜色，让它更显眼 */
+    .input-area::placeholder {
+        color: #00cc00;
+        opacity: 0.8;
+    }
+
+    .input-area::-webkit-input-placeholder {
+        color: #00cc00;
+        opacity: 0.8;
+    }
+
+    .input-area::-moz-placeholder {
+        color: #00cc00;
+        opacity: 0.8;
+    }
+
+    .input-area:-ms-input-placeholder {
+        color: #00cc00;
+        opacity: 0.8;
+    }
+
     /* 文件上传区域 */
     .upload-section {
         margin: 20px 0;
@@ -268,7 +289,6 @@
     .action-buttons {
         display: flex;
         gap: 10px;
-        margin-top: 20px;
     }
 
     .btn {
