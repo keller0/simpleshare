@@ -2,14 +2,18 @@ package main
 
 import (
 	"embed"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
+	"io"
 	"log"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
-
-	"github.com/gin-gonic/gin"
+	"strings"
+	"sync"
 )
 
 //go:embed web
@@ -26,130 +30,189 @@ var (
 	sData    string
 	imgList  []string  // img url list
 	fileList []tmpFile // file list
+	stateMu  sync.RWMutex
 )
 
 func runServer() error {
-	gin.SetMode(gin.ReleaseMode)
-	r := gin.Default()
-	err := r.SetTrustedProxies(nil)
+	mux, err := setRouter()
 	if err != nil {
-		panic(err)
+		return err
 	}
 
-	setRouter(r)
-
 	loadOldFiles()
-
-	// Set memory limit for multipart forms
-	r.MaxMultipartMemory = 20 << 20 // 20 MiB
 
 	ads := address + ":" + port
 	fmt.Println("server started at http://" + ads)
 
-	return r.Run(ads)
+	srv := &http.Server{
+		Addr:    ads,
+		Handler: mux,
+	}
+
+	return srv.ListenAndServe()
 
 }
 
-func setRouter(r *gin.Engine) {
+func setRouter() (*http.ServeMux, error) {
+	tempHTML, err := template.New("").ParseFS(webDir, "web/*.html")
+	if err != nil {
+		return nil, err
+	}
 
-	tempHtml := template.Must(template.New("").ParseFS(webDir, "web/*.html"))
-	r.SetHTMLTemplate(tempHtml)
-	r.LoadHTMLGlob("web/*.html")
-	// r.Static("/static", "./static")
-	r.StaticFS("/static", http.FS(webDir))
-	r.GET("/", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "index.html", gin.H{"data": sData, "imgList": imgList, "fileList": fileList})
+	mux := http.NewServeMux()
+
+	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(webDir))))
+	mux.Handle("/tFile/", http.StripPrefix("/tFile/", http.FileServer(http.Dir("./"+tmpFileDir))))
+
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			http.NotFound(w, r)
+			return
+		}
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		renderIndex(w, tempHTML)
 	})
 
-	r.POST("/submit", func(c *gin.Context) {
-		sData = c.PostForm("sData")
-		c.JSON(http.StatusOK, gin.H{
+	mux.HandleFunc("/submit", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		if err := r.ParseForm(); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"error": err.Error()})
+			return
+		}
+
+		stateMu.Lock()
+		sData = r.PostFormValue("sData")
+		resp := map[string]any{
 			"success":  true,
 			"data":     sData,
-			"imgList":  imgList,
-			"fileList": fileList,
-		})
+			"imgList":  append([]string(nil), imgList...),
+			"fileList": append([]tmpFile(nil), fileList...),
+		}
+		stateMu.Unlock()
+
+		writeJSON(w, http.StatusOK, resp)
 	})
 
-	r.POST("/clearAll", func(c *gin.Context) {
+	mux.HandleFunc("/clearAll", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		stateMu.Lock()
 		sData = ""
 		clearTmpFile()
 		fileList = nil
 		imgList = nil
-		c.HTML(http.StatusOK, "index.html", gin.H{"data": sData, "imgList": imgList, "fileList": fileList})
+		stateMu.Unlock()
+		renderIndex(w, tempHTML)
 	})
 
-	r.POST("/deleteFile", func(c *gin.Context) {
-		sData = ""
-		fileName := c.PostForm("fileName")
-		if fileName == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "fileName is required"})
+	mux.HandleFunc("/deleteFile", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		if err := r.ParseForm(); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"error": err.Error()})
 			return
 		}
 
-		// 删除文件
-		filePath := filepath.Join(tmpFileDir, fileName)
-		err := os.Remove(filePath)
+		fileName, err := sanitizeFileName(r.PostFormValue("fileName"))
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete file: " + err.Error()})
+			writeJSON(w, http.StatusBadRequest, map[string]any{"error": err.Error()})
 			return
 		}
 
-		// 从列表中移除
-		fileUrl := "tFile/" + fileName
+		filePath := filepath.Join(tmpFileDir, fileName)
+		if err := os.Remove(filePath); err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				writeJSON(w, http.StatusNotFound, map[string]any{"error": "file not found"})
+				return
+			}
+			writeJSON(w, http.StatusInternalServerError, map[string]any{"error": "failed to delete file: " + err.Error()})
+			return
+		}
+
+		fileURL := "tFile/" + fileName
+		stateMu.Lock()
 		if isImgSimple(fileName) {
-			// 从图片列表中移除
 			for i, img := range imgList {
-				if img == fileUrl {
+				if img == fileURL {
 					imgList = append(imgList[:i], imgList[i+1:]...)
 					break
 				}
 			}
 		} else {
-			// 从文件列表中移除
 			for i, file := range fileList {
-				if file.N == fileUrl {
+				if file.N == fileURL {
 					fileList = append(fileList[:i], fileList[i+1:]...)
 					break
 				}
 			}
 		}
+		stateMu.Unlock()
 
-		c.JSON(http.StatusOK, gin.H{"success": true, "message": "File deleted successfully"})
+		writeJSON(w, http.StatusOK, map[string]any{"success": true, "message": "File deleted successfully"})
 	})
 
-	r.POST("/upload", func(c *gin.Context) {
-		// Single file
-		file, err := c.FormFile("file")
+	mux.HandleFunc("/upload", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		if err := r.ParseMultipartForm(20 << 20); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		file, fileHeader, err := r.FormFile("file")
 		if err != nil {
-			fmt.Println(err)
-			c.String(http.StatusBadRequest, err.Error())
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
 		}
+		defer file.Close()
 
-		saveName := file.Filename
-
-		err = c.SaveUploadedFile(file, tmpFileDir+"/"+saveName)
+		saveName, err := sanitizeFileName(fileHeader.Filename)
 		if err != nil {
-			fmt.Println(err)
-			c.String(http.StatusBadRequest, err.Error())
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
 		}
-		fileUrl := "tFile/" + saveName
 
-		v, e := c.GetPostForm("isImg")
-		if !e {
-			v = "0"
+		dst, err := os.OpenFile(filepath.Join(tmpFileDir, saveName), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
 		}
-		if v == "1" {
-			imgList = append([]string{fileUrl}, imgList...)
+		defer dst.Close()
+
+		if _, err := io.Copy(dst, file); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		fileURL := "tFile/" + saveName
+		if r.PostFormValue("isImg") == "1" {
+			stateMu.Lock()
+			imgList = append([]string{fileURL}, imgList...)
+			stateMu.Unlock()
 		} else {
-			fileList = append(fileList, tmpFile{T: "0", N: fileUrl, Ns: file.Filename})
+			stateMu.Lock()
+			fileList = append(fileList, tmpFile{T: "0", N: fileURL, Ns: saveName})
+			stateMu.Unlock()
 		}
 
-		c.String(http.StatusOK, fileUrl)
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(fileURL))
 	})
 
-	r.Static("/tFile", "./"+tmpFileDir)
-
+	return mux, nil
 }
 
 // load files in tmpFileDir
@@ -159,6 +222,8 @@ func loadOldFiles() {
 		log.Fatal(err)
 	}
 
+	stateMu.Lock()
+	defer stateMu.Unlock()
 	for _, f := range files {
 		fileUrl := "tFile/" + f.Name()
 		if isImgSimple(f.Name()) {
@@ -185,4 +250,42 @@ func isImgSimple(name string) bool {
 		return true
 	}
 	return false
+}
+
+func renderIndex(w http.ResponseWriter, tpl *template.Template) {
+	stateMu.RLock()
+	data := map[string]any{
+		"data":     sData,
+		"imgList":  append([]string(nil), imgList...),
+		"fileList": append([]tmpFile(nil), fileList...),
+	}
+	stateMu.RUnlock()
+
+	if err := tpl.ExecuteTemplate(w, "index.html", data); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func writeJSON(w http.ResponseWriter, status int, payload any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(payload)
+}
+
+func sanitizeFileName(name string) (string, error) {
+	trimmed := strings.TrimSpace(name)
+	if trimmed == "" {
+		return "", errors.New("fileName is required")
+	}
+
+	normalized := strings.ReplaceAll(trimmed, "\\", "/")
+	baseName := path.Base(normalized)
+	if baseName == "." || baseName == "/" || baseName == "" {
+		return "", errors.New("invalid file name")
+	}
+	if strings.Contains(baseName, "/") || strings.Contains(baseName, string(os.PathSeparator)) {
+		return "", errors.New("invalid file name")
+	}
+
+	return baseName, nil
 }
