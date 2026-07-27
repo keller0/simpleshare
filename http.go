@@ -62,7 +62,7 @@ func setRouter() (*http.ServeMux, error) {
 	mux := http.NewServeMux()
 
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(webDir))))
-	mux.Handle("/tFile/", http.StripPrefix("/tFile/", http.FileServer(http.Dir("./"+tmpFileDir))))
+	mux.Handle("/tFile/", http.StripPrefix("/tFile/", http.FileServer(http.Dir(tmpFileDir))))
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
